@@ -45,6 +45,33 @@ interface Historia {
   nota: string;
 }
 
+interface PacienteCompleto {
+  id: string;
+  nombre: string;
+  apellidos: string;
+  telefono: string | null;
+  dni: string | null;
+  nacimiento: string | null;
+  email: string | null;
+  direccion: string | null;
+  alergias: string | null;
+  consentFirmaArchivoId: string | null;
+}
+
+interface TrabajoLab {
+  id: string;
+  tipo: string;
+  trabajo: string | null;
+  fechaPrevista: string;
+  estado: string;
+  paciente: { id: string; nombre: string; apellidos: string };
+}
+
+/** Igual que `faltan()` en el HTML original: campos que hacen una ficha "incompleta". */
+function fichaIncompleta(p: PacienteCompleto): boolean {
+  return !p.telefono || !p.dni || !p.nacimiento || !p.email || !p.direccion || !p.consentFirmaArchivoId || !p.alergias;
+}
+
 const TAG_ESTADO: Record<string, string> = {
   llegado: 'tag warn',
   silla: 'tag bad',
@@ -69,6 +96,8 @@ export function Sillon() {
   const [dentistas, setDentistas] = useState<Dentista[]>([]);
   const [gabinetes, setGabinetes] = useState<Gabinete[]>([]);
   const [historiaHoy, setHistoriaHoy] = useState<Historia[]>([]);
+  const [pacientes, setPacientes] = useState<PacienteCompleto[]>([]);
+  const [trabajosLab, setTrabajosLab] = useState<TrabajoLab[]>([]);
   const [cargando, setCargando] = useState(true);
   const [apuntando, setApuntando] = useState(false);
   const [minAhora, setMinAhora] = useState(() => {
@@ -91,6 +120,8 @@ export function Sillon() {
 
   useEffect(() => {
     cargar();
+    api.get<PacienteCompleto[]>('/pacientes').then(setPacientes);
+    api.get<TrabajoLab[]>('/laboratorio').then(setTrabajosLab);
     const id = setInterval(() => {
       const n = new Date();
       setMinAhora(n.getHours() * 60 + n.getMinutes());
@@ -277,6 +308,48 @@ export function Sillon() {
     </div>
   );
 
+  const fichasIncompletas = pacientes.filter(fichaIncompleta);
+  const labVencido = trabajosLab.filter((t) => t.estado !== 'entregado' && t.fechaPrevista.slice(0, 10) <= hoyISO());
+  const hayAvisos = fichasIncompletas.length > 0 || labVencido.length > 0;
+
+  const BloqueAvisos = () =>
+    !hayAvisos ? null : (
+      <div className="card">
+        <h3>Avisos de hoy</h3>
+        <hr />
+        <table>
+          <tbody>
+            {fichasIncompletas.length > 0 && (
+              <tr className="click" onClick={() => (window.location.href = '/pacientes')}>
+                <td style={{ width: 100 }}>
+                  <span className="tag warn">Fichas</span>
+                </td>
+                <td className="mini">
+                  {fichasIncompletas.length} paciente(s) con datos sin rellenar:{' '}
+                  {fichasIncompletas
+                    .slice(0, 3)
+                    .map((p) => `${p.nombre} ${p.apellidos}`)
+                    .join(', ')}
+                  {fichasIncompletas.length > 3 ? '…' : ''}
+                </td>
+              </tr>
+            )}
+            {labVencido.map((t) => (
+              <tr className="click" key={t.id} onClick={() => (window.location.href = '/lab')}>
+                <td style={{ width: 100 }}>
+                  <span className="tag warn">Laboratorio</span>
+                </td>
+                <td className="mini">
+                  {t.trabajo || t.tipo} de {t.paciente.nombre} {t.paciente.apellidos} · previsto{' '}
+                  {new Date(t.fechaPrevista).toLocaleDateString('es-ES')}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+
   if (!enSilla) {
     return (
       <div>
@@ -286,10 +359,11 @@ export function Sillon() {
           </Link>
         </CabTop>
         <BloqueGabinetes />
-        <div className="grid g2" style={{ marginTop: 14 }}>
+        <div className="grid g2" style={{ marginTop: 14, marginBottom: 14 }}>
           <BloqueCitasHoy />
           <BloqueProfesionales />
         </div>
+        <BloqueAvisos />
       </div>
     );
   }
@@ -355,10 +429,11 @@ export function Sillon() {
         )}
       </div>
 
-      <div className="grid g2" style={{ marginTop: 14 }}>
+      <div className="grid g2" style={{ marginTop: 14, marginBottom: 14 }}>
         <BloqueCitasHoy />
         <BloqueProfesionales />
       </div>
+      <BloqueAvisos />
 
       {apuntando && (
         <Modal onClose={() => setApuntando(false)}>

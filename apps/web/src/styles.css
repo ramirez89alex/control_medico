@@ -111,6 +111,14 @@ hr{border:0;border-top:1px solid var(--linea);margin:14px 0}
 .ev.doc{border-left:3px solid var(--linea);padding-left:10px}
 @media(max-width:700px){.ev{flex-wrap:wrap}.ev .evf{width:auto;flex:0 0 auto}.ev .evi{margin-left:auto}}
 
+/* tarjetas de gabinete (Modo sillón) */
+.gabrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:14px}
+.gmini{background:#fff;border:1px solid var(--linea);border-top:3px solid var(--c);border-radius:10px;padding:11px 12px;box-shadow:var(--sombra)}
+.gmini.ocu{background:linear-gradient(180deg,color-mix(in srgb,var(--c) 9%,#fff),#fff)}
+.gmini b{font-family:'Space Grotesk';font-size:13.5px}
+.gmini .gnom{font-family:'Space Grotesk';font-size:16px;margin-top:6px;letter-spacing:-.02em}
+@media(max-width:700px){.gabrow{grid-template-columns:1fr}}
+
 /* portada de acceso */
 .portada{max-width:720px;margin:22px auto;text-align:center}
 .plogo{height:52px;margin-bottom:10px;max-width:82vw;object-fit:contain}
