@@ -8,6 +8,12 @@ import { PacienteFicha } from './pages/PacienteFicha';
 import { Proximamente } from './pages/Proximamente';
 import { Presupuestos } from './pages/Presupuestos';
 import { Cobros } from './pages/Cobros';
+import { Sillon } from './pages/Sillon';
+import { Laboratorio } from './pages/Laboratorio';
+import { Contactos } from './pages/Contactos';
+import { Portal } from './pages/Portal';
+import { AccesoPaciente } from './pages/AccesoPaciente';
+import { MiPortal } from './pages/MiPortal';
 
 function RutaPrivada({ children }: { children: JSX.Element }) {
   const { usuario, cargando } = useAuth();
@@ -17,11 +23,7 @@ function RutaPrivada({ children }: { children: JSX.Element }) {
 }
 
 const PROXIMAMENTE: Array<{ path: string; titulo: string; descripcion: string }> = [
-  { path: '/sillon', titulo: 'Modo sillón', descripcion: 'Semáforo de la clínica, gabinetes en directo y profesionales disponibles.' },
-  { path: '/portal', titulo: 'Portal del paciente', descripcion: 'Acceso del paciente a sus tratamientos, pagos y próxima cita.' },
-  { path: '/kiosco', titulo: 'Área del paciente', descripcion: 'Autoservicio en sala: confirmar llegada y firmar consentimientos.' },
-  { path: '/lab', titulo: 'Laboratorio y placas', descripcion: 'Seguimiento de casos de laboratorio y radiografías.' },
-  { path: '/contactos', titulo: 'Contactos', descripcion: 'Médicos y clínicas que derivan pacientes.' },
+  { path: '/kiosco', titulo: 'Área del paciente (modo quiosco)', descripcion: 'Tablet compartida en sala para confirmar llegada sin enlace individual.' },
   { path: '/gestion', titulo: 'Gestión', descripcion: 'Facturación, banco, compras, almacén, equipo y marketing.' },
 ];
 
@@ -29,6 +31,8 @@ function Rutas() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/acceso/:token" element={<AccesoPaciente />} />
+      <Route path="/mi" element={<MiPortal />} />
       <Route
         element={
           <RutaPrivada>
@@ -36,11 +40,15 @@ function Rutas() {
           </RutaPrivada>
         }
       >
+        <Route path="/sillon" element={<Sillon />} />
         <Route path="/agenda" element={<Agenda />} />
         <Route path="/pacientes" element={<Pacientes />} />
         <Route path="/pacientes/:id" element={<PacienteFicha />} />
         <Route path="/presupuestos" element={<Presupuestos />} />
         <Route path="/cobros" element={<Cobros />} />
+        <Route path="/lab" element={<Laboratorio />} />
+        <Route path="/contactos" element={<Contactos />} />
+        <Route path="/portal" element={<Portal />} />
         {PROXIMAMENTE.map((p) => (
           <Route key={p.path} path={p.path} element={<Proximamente titulo={p.titulo} descripcion={p.descripcion} />} />
         ))}

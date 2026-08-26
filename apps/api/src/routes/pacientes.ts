@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { clinicaDe, requireAuth, requireRol } from '../middleware/auth.js';
+import { clinicaDe, requireAuth, requireRol, usuarioDe } from '../middleware/auth.js';
 import { registrarAuditoria } from '../lib/auditoria.js';
 
 export const pacientesRouter = Router();
@@ -62,7 +62,7 @@ pacientesRouter.post('/', async (req, res) => {
   const paciente = await prisma.paciente.create({
     data: { ...parsed.data, email: parsed.data.email || null, clinicaId: clinicaDe(req) },
   });
-  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: req.usuario!.usuarioId, accion: 'crear', entidad: 'paciente', entidadId: paciente.id });
+  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: usuarioDe(req), accion: 'crear', entidad: 'paciente', entidadId: paciente.id });
   res.status(201).json(paciente);
 });
 
@@ -77,7 +77,7 @@ pacientesRouter.put('/:id', async (req, res) => {
     where: { id: existente.id },
     data: { ...parsed.data, email: parsed.data.email || undefined },
   });
-  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: req.usuario!.usuarioId, accion: 'editar', entidad: 'paciente', entidadId: paciente.id });
+  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: usuarioDe(req), accion: 'editar', entidad: 'paciente', entidadId: paciente.id });
   res.json(paciente);
 });
 
@@ -102,7 +102,7 @@ pacientesRouter.put('/:id/consentimiento', async (req, res) => {
   });
   registrarAuditoria({
     clinicaId: clinicaDe(req),
-    usuarioId: req.usuario!.usuarioId,
+    usuarioId: usuarioDe(req),
     accion: 'consentimiento',
     entidad: 'paciente',
     entidadId: paciente.id,
@@ -115,7 +115,7 @@ pacientesRouter.delete('/:id', requireRol('admin'), async (req, res) => {
   if (!existente) return res.status(404).json({ error: 'Paciente no encontrado' });
 
   await prisma.paciente.update({ where: { id: existente.id }, data: { deletedAt: new Date() } });
-  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: req.usuario!.usuarioId, accion: 'borrar', entidad: 'paciente', entidadId: existente.id });
+  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: usuarioDe(req), accion: 'borrar', entidad: 'paciente', entidadId: existente.id });
   res.status(204).end();
 });
 
@@ -134,11 +134,11 @@ pacientesRouter.post('/:id/historia', async (req, res) => {
   if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
 
   const entrada = await prisma.historiaClinica.create({
-    data: { ...parsed.data, clinicaId: clinicaDe(req), pacienteId: paciente.id, autorId: req.usuario!.usuarioId },
+    data: { ...parsed.data, clinicaId: clinicaDe(req), pacienteId: paciente.id, autorId: usuarioDe(req) },
   });
   registrarAuditoria({
     clinicaId: clinicaDe(req),
-    usuarioId: req.usuario!.usuarioId,
+    usuarioId: usuarioDe(req),
     accion: 'crear',
     entidad: 'historia_clinica',
     entidadId: entrada.id,
@@ -154,6 +154,6 @@ pacientesRouter.delete('/:id/historia/:entradaId', requireRol('admin'), async (r
   if (!entrada) return res.status(404).json({ error: 'Entrada no encontrada' });
 
   await prisma.historiaClinica.update({ where: { id: entrada.id }, data: { deletedAt: new Date() } });
-  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: req.usuario!.usuarioId, accion: 'borrar', entidad: 'historia_clinica', entidadId: entrada.id });
+  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: usuarioDe(req), accion: 'borrar', entidad: 'historia_clinica', entidadId: entrada.id });
   res.status(204).end();
 });

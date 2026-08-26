@@ -1,6 +1,6 @@
 export type Rol = 'admin' | 'dentista' | 'recepcion' | 'paciente';
 
-export type EstadoCita = 'programada' | 'llegado' | 'hecha' | 'cancelada';
+export type EstadoCita = 'programada' | 'llegado' | 'silla' | 'hecha' | 'cancelada';
 
 export type EstadoPresupuesto = 'borrador' | 'enviado' | 'aceptado' | 'rechazado';
 

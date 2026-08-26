@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { clinicaDe, requireAuth, requireRol } from '../middleware/auth.js';
+import { clinicaDe, requireAuth, requireRol, usuarioDe } from '../middleware/auth.js';
 import { nuevaObjectKey, presignDescarga, presignSubida } from '../lib/s3.js';
 import { registrarAuditoria } from '../lib/auditoria.js';
 
@@ -39,7 +39,7 @@ archivosRouter.post('/', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const archivo = await prisma.archivo.create({ data: { ...parsed.data, clinicaId: clinicaDe(req) } });
-  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: req.usuario!.usuarioId, accion: 'crear', entidad: 'archivo', entidadId: archivo.id });
+  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: usuarioDe(req), accion: 'crear', entidad: 'archivo', entidadId: archivo.id });
   res.status(201).json(archivo);
 });
 
@@ -54,6 +54,6 @@ archivosRouter.delete('/:id', async (req, res) => {
   const archivo = await prisma.archivo.findFirst({ where: { id: req.params.id, clinicaId: clinicaDe(req), deletedAt: null } });
   if (!archivo) return res.status(404).json({ error: 'Archivo no encontrado' });
   await prisma.archivo.update({ where: { id: archivo.id }, data: { deletedAt: new Date() } });
-  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: req.usuario!.usuarioId, accion: 'borrar', entidad: 'archivo', entidadId: archivo.id });
+  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: usuarioDe(req), accion: 'borrar', entidad: 'archivo', entidadId: archivo.id });
   res.status(204).end();
 });

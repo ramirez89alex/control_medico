@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { huecosLibres, type CitaSlot, type HorarioSemana } from '@powerdent/shared';
 import { prisma } from '../lib/prisma.js';
-import { clinicaDe, requireAuth, requireRol } from '../middleware/auth.js';
+import { clinicaDe, requireAuth, requireRol, usuarioDe } from '../middleware/auth.js';
 import { registrarAuditoria } from '../lib/auditoria.js';
 
 export const citasRouter = Router();
@@ -73,12 +73,12 @@ citasRouter.post('/', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const cita = await prisma.cita.create({ data: { ...parsed.data, clinicaId: clinicaDe(req) } });
-  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: req.usuario!.usuarioId, accion: 'crear', entidad: 'cita', entidadId: cita.id });
+  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: usuarioDe(req), accion: 'crear', entidad: 'cita', entidadId: cita.id });
   res.status(201).json(cita);
 });
 
 const citaUpdateSchema = citaSchema.partial().extend({
-  estado: z.enum(['programada', 'llegado', 'hecha', 'cancelada']).optional(),
+  estado: z.enum(['programada', 'llegado', 'silla', 'hecha', 'cancelada']).optional(),
   confirmada: z.boolean().optional(),
 });
 
@@ -90,7 +90,7 @@ citasRouter.put('/:id', async (req, res) => {
   if (!existente) return res.status(404).json({ error: 'Cita no encontrada' });
 
   const cita = await prisma.cita.update({ where: { id: existente.id }, data: parsed.data });
-  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: req.usuario!.usuarioId, accion: 'editar', entidad: 'cita', entidadId: cita.id });
+  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: usuarioDe(req), accion: 'editar', entidad: 'cita', entidadId: cita.id });
   res.json(cita);
 });
 
@@ -99,6 +99,6 @@ citasRouter.delete('/:id', async (req, res) => {
   if (!existente) return res.status(404).json({ error: 'Cita no encontrada' });
 
   await prisma.cita.update({ where: { id: existente.id }, data: { deletedAt: new Date(), estado: 'cancelada' } });
-  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: req.usuario!.usuarioId, accion: 'borrar', entidad: 'cita', entidadId: existente.id });
+  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: usuarioDe(req), accion: 'borrar', entidad: 'cita', entidadId: existente.id });
   res.status(204).end();
 });

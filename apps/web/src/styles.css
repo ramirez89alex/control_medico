@@ -122,6 +122,14 @@ hr{border:0;border-top:1px solid var(--linea);margin:14px 0}
 .pcard p{min-height:38px}
 @media(max-width:600px){.pdos{grid-template-columns:1fr}}
 
+/* carpeta del paciente (portal) */
+.pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.pbox{border:1px solid #DCE3E1;border-radius:11px;padding:12px}
+.pbox small{font-size:9.5px;letter-spacing:.1em;color:#7A8A88;font-weight:700}
+.pbox b{display:block;font-family:'Space Grotesk',sans-serif;font-size:19px;margin-top:3px;letter-spacing:-.02em}
+.pbox.deuda b{color:#D6483B}
+@media(max-width:520px){.pgrid{grid-template-columns:1fr}}
+
 /* pie de página fijo con reloj */
 #pie{
   position:fixed;left:0;right:0;bottom:0;z-index:110;display:flex;align-items:center;justify-content:space-between;

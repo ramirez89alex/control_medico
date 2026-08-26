@@ -3,17 +3,9 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { signAccessToken, signRefreshToken, verifyPassword, verifyRefreshToken } from '../lib/auth.js';
 import { registrarAuditoria } from '../lib/auditoria.js';
+import { REFRESH_COOKIE, refreshCookieOpts as cookieOpts } from '../lib/cookies.js';
 
 export const authRouter = Router();
-
-const REFRESH_COOKIE = 'powerdent_refresh';
-const cookieOpts = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
-  path: '/auth',
-  maxAge: 30 * 24 * 60 * 60 * 1000,
-};
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -32,7 +24,7 @@ authRouter.post('/login', async (req, res) => {
   if (!ok) return res.status(401).json({ error: 'Credenciales incorrectas' });
 
   const accessToken = signAccessToken({ usuarioId: usuario.id, clinicaId: usuario.clinicaId, rol: usuario.rol });
-  const refreshToken = signRefreshToken(usuario.id);
+  const refreshToken = signRefreshToken({ usuarioId: usuario.id });
   res.cookie(REFRESH_COOKIE, refreshToken, cookieOpts);
   registrarAuditoria({ clinicaId: usuario.clinicaId, usuarioId: usuario.id, accion: 'login', entidad: 'usuario', entidadId: usuario.id });
 
@@ -47,11 +39,12 @@ authRouter.post('/refresh', async (req, res) => {
   if (!token) return res.status(401).json({ error: 'Sin sesión' });
   try {
     const { usuarioId } = verifyRefreshToken(token);
+    if (!usuarioId) return res.status(401).json({ error: 'Sin sesión' });
     const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId } });
     if (!usuario || !usuario.activo) return res.status(401).json({ error: 'Sin sesión' });
 
     const accessToken = signAccessToken({ usuarioId: usuario.id, clinicaId: usuario.clinicaId, rol: usuario.rol });
-    const refreshToken = signRefreshToken(usuario.id);
+    const refreshToken = signRefreshToken({ usuarioId: usuario.id });
     res.cookie(REFRESH_COOKIE, refreshToken, cookieOpts);
     res.json({
       accessToken,

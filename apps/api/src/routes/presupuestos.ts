@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { clinicaDe, requireAuth, requireRol } from '../middleware/auth.js';
+import { clinicaDe, requireAuth, requireRol, usuarioDe } from '../middleware/auth.js';
 import { registrarAuditoria } from '../lib/auditoria.js';
 
 export const presupuestosRouter = Router();
@@ -54,7 +54,7 @@ presupuestosRouter.post('/', async (req, res) => {
     data: { ...cabecera, clinicaId: clinicaDe(req), lineas: { create: lineas } },
     include: { paciente: true, lineas: true },
   });
-  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: req.usuario!.usuarioId, accion: 'crear', entidad: 'presupuesto', entidadId: presupuesto.id });
+  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: usuarioDe(req), accion: 'crear', entidad: 'presupuesto', entidadId: presupuesto.id });
   res.status(201).json(presupuesto);
 });
 
@@ -80,7 +80,7 @@ presupuestosRouter.put('/:id', async (req, res) => {
     });
   });
 
-  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: req.usuario!.usuarioId, accion: 'editar', entidad: 'presupuesto', entidadId: presupuesto.id });
+  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: usuarioDe(req), accion: 'editar', entidad: 'presupuesto', entidadId: presupuesto.id });
   res.json(presupuesto);
 });
 
@@ -89,6 +89,6 @@ presupuestosRouter.delete('/:id', requireRol('admin'), async (req, res) => {
   if (!existente) return res.status(404).json({ error: 'Presupuesto no encontrado' });
 
   await prisma.presupuesto.update({ where: { id: existente.id }, data: { deletedAt: new Date() } });
-  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: req.usuario!.usuarioId, accion: 'borrar', entidad: 'presupuesto', entidadId: existente.id });
+  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: usuarioDe(req), accion: 'borrar', entidad: 'presupuesto', entidadId: existente.id });
   res.status(204).end();
 });

@@ -4,12 +4,16 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { env } from './env.js';
 import { authRouter } from './routes/auth.js';
+import { authPacienteRouter } from './routes/auth-paciente.js';
 import { pacientesRouter } from './routes/pacientes.js';
 import { citasRouter } from './routes/citas.js';
 import { catalogosRouter } from './routes/catalogos.js';
 import { archivosRouter } from './routes/archivos.js';
 import { presupuestosRouter } from './routes/presupuestos.js';
 import { cobrosRouter } from './routes/cobros.js';
+import { laboratorioRouter } from './routes/laboratorio.js';
+import { contactosRouter } from './routes/contactos.js';
+import { portalRouter } from './routes/portal.js';
 
 const app = express();
 
@@ -20,12 +24,16 @@ app.use(cookieParser());
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
 app.use('/auth', authRouter);
+app.use('/auth/paciente', authPacienteRouter);
 app.use('/pacientes', pacientesRouter);
 app.use('/citas', citasRouter);
 app.use('/catalogos', catalogosRouter);
 app.use('/archivos', archivosRouter);
 app.use('/presupuestos', presupuestosRouter);
 app.use('/cobros', cobrosRouter);
+app.use('/laboratorio', laboratorioRouter);
+app.use('/contactos', contactosRouter);
+app.use('/portal', portalRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);

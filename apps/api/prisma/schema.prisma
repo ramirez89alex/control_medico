@@ -17,6 +17,7 @@ enum Rol {
 enum EstadoCita {
   programada
   llegado
+  silla
   hecha
   cancelada
 }
@@ -41,6 +42,19 @@ enum FormaCobro {
 enum TipoCobro {
   pago
   anticipo
+}
+
+enum EstadoLaboratorio {
+  enviado
+  recibido
+  entregado
+}
+
+enum TipoContacto {
+  proveedor
+  laboratorio
+  interno
+  otro
 }
 
 model Clinica {
@@ -73,6 +87,9 @@ model Clinica {
   sesionesAuditoria SesionAuditoria[]
   tarifario         Tarifario[]
   cobros            Cobro[]
+  laboratorio       Laboratorio[]
+  contactos         Contacto[]
+  accesosPaciente   AccesoPaciente[]
 
   @@map("clinicas")
 }
@@ -151,6 +168,8 @@ model Paciente {
   archivos        Archivo[]
   usuario         Usuario?
   cobros          Cobro[]
+  laboratorio     Laboratorio[]
+  accesos         AccesoPaciente[]
 
   @@index([clinicaId])
   @@index([clinicaId, deletedAt])
@@ -328,4 +347,63 @@ model Cobro {
   @@index([clinicaId, pacienteId])
   @@index([clinicaId, fecha])
   @@map("cobros")
+}
+
+model Laboratorio {
+  id             String            @id @default(uuid())
+  clinicaId      String            @map("clinica_id")
+  clinica        Clinica           @relation(fields: [clinicaId], references: [id])
+  pacienteId     String            @map("paciente_id")
+  paciente       Paciente          @relation(fields: [pacienteId], references: [id])
+  nombreLab      String?           @map("nombre_lab")
+  tipo           String
+  trabajo        String?
+  piezas         String?
+  material       String?
+  fechaEnvio     DateTime          @map("fecha_envio")
+  diasEntrega    Int               @default(7) @map("dias_entrega")
+  fechaPrevista  DateTime          @map("fecha_prevista")
+  coste          Float             @default(0)
+  fechaCita      DateTime?         @map("fecha_cita")
+  estado         EstadoLaboratorio @default(enviado)
+  fases          Json              @default("{}") // { "Impresión enviada": "2026-08-26", ... }
+  createdAt      DateTime          @default(now())
+  deletedAt      DateTime?         @map("deleted_at")
+
+  @@index([clinicaId, estado])
+  @@map("laboratorio")
+}
+
+model Contacto {
+  id        String       @id @default(uuid())
+  clinicaId String       @map("clinica_id")
+  clinica   Clinica      @relation(fields: [clinicaId], references: [id])
+  nombre    String
+  tipo      TipoContacto @default(otro)
+  referencia String?     @map("referencia")
+  telefono  String?
+  email     String?
+  createdAt DateTime     @default(now())
+  deletedAt DateTime?    @map("deleted_at")
+
+  @@index([clinicaId])
+  @@map("contactos")
+}
+
+/// Enlace de acceso de un solo uso para el portal del paciente (sustituye al PIN fijo
+/// del HTML original). El token en claro nunca se persiste, solo su hash.
+model AccesoPaciente {
+  id                String    @id @default(uuid())
+  clinicaId         String    @map("clinica_id")
+  clinica           Clinica   @relation(fields: [clinicaId], references: [id])
+  pacienteId        String    @map("paciente_id")
+  paciente          Paciente  @relation(fields: [pacienteId], references: [id])
+  tokenHash         String    @unique @map("token_hash")
+  expiraEn          DateTime  @map("expira_en")
+  usadoEn           DateTime? @map("usado_en")
+  creadoPorUsuarioId String   @map("creado_por_usuario_id")
+  createdAt         DateTime  @default(now())
+
+  @@index([pacienteId])
+  @@map("accesos_paciente")
 }

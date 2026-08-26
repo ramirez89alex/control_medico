@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { pendientePaciente } from '@powerdent/shared';
 import { prisma } from '../lib/prisma.js';
-import { clinicaDe, requireAuth, requireRol } from '../middleware/auth.js';
+import { clinicaDe, requireAuth, requireRol, usuarioDe } from '../middleware/auth.js';
 import { registrarAuditoria } from '../lib/auditoria.js';
 
 export const cobrosRouter = Router();
@@ -88,6 +88,6 @@ cobrosRouter.post('/', async (req, res) => {
     return tx.cobro.create({ data: { ...parsed.data, clinicaId, numero }, include: { paciente: true } });
   });
 
-  registrarAuditoria({ clinicaId, usuarioId: req.usuario!.usuarioId, accion: 'crear', entidad: 'cobro', entidadId: cobro.id });
+  registrarAuditoria({ clinicaId, usuarioId: usuarioDe(req), accion: 'crear', entidad: 'cobro', entidadId: cobro.id });
   res.status(201).json(cobro);
 });
