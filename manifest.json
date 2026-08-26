@@ -1,0 +1,17 @@
+{
+  "name": "PowerDent Marratxí",
+  "short_name": "PowerDent",
+  "description": "Gestión clínica: agenda, sillón, pacientes, laboratorio, almacén y área del paciente.",
+  "start_url": "./PowerDent_Clinica.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F4F5F8",
+  "theme_color": "#242A4D",
+  "lang": "es",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

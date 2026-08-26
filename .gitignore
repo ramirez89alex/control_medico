@@ -1,0 +1,11 @@
+node_modules/
+.claude/
+dist/
+build/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+pgdata/
+apps/api/prisma/dev.db

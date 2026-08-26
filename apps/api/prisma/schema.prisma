@@ -1,0 +1,273 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Rol {
+  admin
+  dentista
+  recepcion
+  paciente
+}
+
+enum EstadoCita {
+  programada
+  llegado
+  hecha
+  cancelada
+}
+
+enum EstadoPresupuesto {
+  borrador
+  enviado
+  aceptado
+  rechazado
+}
+
+model Clinica {
+  id          String   @id @default(uuid())
+  nombre      String
+  nif         String?
+  direccion   String?
+  cp          String?
+  ciudad      String?
+  telefono    String?
+  email       String?
+  colegiado   String?
+  iva         Float    @default(0)
+  prefijo     String   @default("34")
+  idioma      String   @default("es")
+  horario     Json // { "1": {"abre":"09:00","cierra":"20:00"}, "0": null, ... }
+  finCuotas   Int      @default(12)
+  finTIN      Float    @default(15)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  usuarios          Usuario[]
+  pacientes         Paciente[]
+  dentistas         Dentista[]
+  gabinetes         Gabinete[]
+  citas             Cita[]
+  historiaClinica   HistoriaClinica[]
+  presupuestos      Presupuesto[]
+  archivos          Archivo[]
+  sesionesAuditoria SesionAuditoria[]
+
+  @@map("clinicas")
+}
+
+model Usuario {
+  id           String   @id @default(uuid())
+  clinicaId    String   @map("clinica_id")
+  clinica      Clinica  @relation(fields: [clinicaId], references: [id])
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  rol          Rol
+  nombre       String
+  pacienteId   String?  @unique @map("paciente_id")
+  paciente     Paciente? @relation(fields: [pacienteId], references: [id])
+  activo       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  auditoria SesionAuditoria[]
+
+  @@index([clinicaId])
+  @@map("usuarios")
+}
+
+model SesionAuditoria {
+  id        String   @id @default(uuid())
+  clinicaId String   @map("clinica_id")
+  clinica   Clinica  @relation(fields: [clinicaId], references: [id])
+  usuarioId String   @map("usuario_id")
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+  accion    String // 'crear' | 'editar' | 'ver' | 'borrar' | 'login' ...
+  entidad   String // 'paciente' | 'cita' | ...
+  entidadId String?  @map("entidad_id")
+  detalle   Json?
+  fecha     DateTime @default(now())
+
+  @@index([clinicaId, fecha])
+  @@index([entidad, entidadId])
+  @@map("sesiones_auditoria")
+}
+
+model Paciente {
+  id             String    @id @default(uuid())
+  clinicaId      String    @map("clinica_id")
+  clinica        Clinica   @relation(fields: [clinicaId], references: [id])
+  nombre         String
+  apellidos      String
+  nacimiento     DateTime?
+  dni            String?
+  telefono       String?
+  email          String?
+  direccion      String?
+  alergias       String?
+  medicacion     String?
+  antecedentes   String?
+  aviso          String?
+  origen         String?
+  doctorId       String?   @map("doctor_id")
+
+  consentDatosAceptado      Boolean   @default(false)
+  consentTratamientoAceptado Boolean  @default(false)
+  consentImagenesAceptado   Boolean   @default(false)
+  consentComercialAceptado  Boolean   @default(false)
+  consentFirmaArchivoId     String?   @map("consent_firma_archivo_id")
+  consentFecha              DateTime?
+
+  accesoCodigoHash String?  @map("acceso_codigo_hash")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? @map("deleted_at")
+
+  citas           Cita[]
+  historiaClinica HistoriaClinica[]
+  presupuestos    Presupuesto[]
+  archivos        Archivo[]
+  usuario         Usuario?
+
+  @@index([clinicaId])
+  @@index([clinicaId, deletedAt])
+  @@map("pacientes")
+}
+
+model Dentista {
+  id        String   @id @default(uuid())
+  clinicaId String   @map("clinica_id")
+  clinica   Clinica  @relation(fields: [clinicaId], references: [id])
+  nombre    String
+  rol       String   @default("Odontólogo")
+  especialidad String?
+  color     String   @default("#3B4076")
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  citas Cita[]
+
+  @@index([clinicaId])
+  @@map("dentistas")
+}
+
+model Gabinete {
+  id        String   @id @default(uuid())
+  clinicaId String   @map("clinica_id")
+  clinica   Clinica  @relation(fields: [clinicaId], references: [id])
+  nombre    String
+  uso       String?
+  createdAt DateTime @default(now())
+
+  citas Cita[]
+
+  @@index([clinicaId])
+  @@map("gabinetes")
+}
+
+model Cita {
+  id         String     @id @default(uuid())
+  clinicaId  String     @map("clinica_id")
+  clinica    Clinica    @relation(fields: [clinicaId], references: [id])
+  pacienteId String?    @map("paciente_id")
+  paciente   Paciente?  @relation(fields: [pacienteId], references: [id])
+  nombreLibre String?   @map("nombre_libre")
+  fecha      String // 'YYYY-MM-DD'
+  hora       String // 'HH:MM'
+  duracionMin Int       @default(30) @map("duracion_min")
+  gabineteId String?    @map("gabinete_id")
+  gabinete   Gabinete?  @relation(fields: [gabineteId], references: [id])
+  dentistaId String?    @map("dentista_id")
+  dentista   Dentista?  @relation(fields: [dentistaId], references: [id])
+  motivo     String?
+  estado     EstadoCita @default(programada)
+  confirmada Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  deletedAt  DateTime?  @map("deleted_at")
+
+  @@index([clinicaId, fecha])
+  @@index([clinicaId, deletedAt])
+  @@map("citas")
+}
+
+/// Historia clínica: append-only, sin endpoint de edición.
+model HistoriaClinica {
+  id         String    @id @default(uuid())
+  clinicaId  String    @map("clinica_id")
+  clinica    Clinica   @relation(fields: [clinicaId], references: [id])
+  pacienteId String    @map("paciente_id")
+  paciente   Paciente  @relation(fields: [pacienteId], references: [id])
+  fecha      DateTime  @default(now())
+  acto       String
+  piezas     String?
+  nota       String
+  audioArchivoId String? @map("audio_archivo_id")
+  autorId    String    @map("autor_id")
+  createdAt  DateTime  @default(now())
+  deletedAt  DateTime? @map("deleted_at")
+
+  @@index([clinicaId, pacienteId])
+  @@map("historia_clinica")
+}
+
+model Presupuesto {
+  id         String            @id @default(uuid())
+  clinicaId  String            @map("clinica_id")
+  clinica    Clinica           @relation(fields: [clinicaId], references: [id])
+  pacienteId String            @map("paciente_id")
+  paciente   Paciente          @relation(fields: [pacienteId], references: [id])
+  fecha      DateTime          @default(now())
+  validezDias Int              @default(30) @map("validez_dias")
+  descuentoPct Float           @default(0) @map("descuento_pct")
+  estado     EstadoPresupuesto @default(borrador)
+  notas      String?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  deletedAt  DateTime?         @map("deleted_at")
+
+  lineas LineaPresupuesto[]
+
+  @@index([clinicaId, pacienteId])
+  @@map("presupuestos")
+}
+
+model LineaPresupuesto {
+  id            String      @id @default(uuid())
+  presupuestoId String      @map("presupuesto_id")
+  presupuesto   Presupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+  codigo        String
+  nombre        String
+  pieza         String?
+  cantidad      Float       @default(1)
+  pvp           Float
+  coste         Float       @default(0)
+
+  @@index([presupuestoId])
+  @@map("lineas_presupuesto")
+}
+
+/// Referencia a un objeto en el bucket S3-compatible. Nunca guarda base64.
+model Archivo {
+  id         String    @id @default(uuid())
+  clinicaId  String    @map("clinica_id")
+  clinica    Clinica   @relation(fields: [clinicaId], references: [id])
+  pacienteId String?   @map("paciente_id")
+  paciente   Paciente? @relation(fields: [pacienteId], references: [id])
+  nombre     String
+  mime       String
+  tamanoBytes Int      @map("tamano_bytes")
+  objectKey  String    @map("object_key")
+  createdAt  DateTime  @default(now())
+  deletedAt  DateTime? @map("deleted_at")
+
+  @@index([clinicaId])
+  @@index([pacienteId])
+  @@map("archivos")
+}
