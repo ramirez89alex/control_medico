@@ -28,6 +28,21 @@ enum EstadoPresupuesto {
   rechazado
 }
 
+enum FormaCobro {
+  tarjeta
+  efectivo
+  bizum
+  transferencia
+  enlace_pago
+  financiacion
+  seguro
+}
+
+enum TipoCobro {
+  pago
+  anticipo
+}
+
 model Clinica {
   id          String   @id @default(uuid())
   nombre      String
@@ -56,6 +71,8 @@ model Clinica {
   presupuestos      Presupuesto[]
   archivos          Archivo[]
   sesionesAuditoria SesionAuditoria[]
+  tarifario         Tarifario[]
+  cobros            Cobro[]
 
   @@map("clinicas")
 }
@@ -133,6 +150,7 @@ model Paciente {
   presupuestos    Presupuesto[]
   archivos        Archivo[]
   usuario         Usuario?
+  cobros          Cobro[]
 
   @@index([clinicaId])
   @@index([clinicaId, deletedAt])
@@ -153,7 +171,7 @@ model Dentista {
 
   citas Cita[]
 
-  @@index([clinicaId])
+  @@unique([clinicaId, nombre])
   @@map("dentistas")
 }
 
@@ -167,7 +185,7 @@ model Gabinete {
 
   citas Cita[]
 
-  @@index([clinicaId])
+  @@unique([clinicaId, nombre])
   @@map("gabinetes")
 }
 
@@ -233,6 +251,7 @@ model Presupuesto {
   deletedAt  DateTime?         @map("deleted_at")
 
   lineas LineaPresupuesto[]
+  cobros Cobro[]
 
   @@index([clinicaId, pacienteId])
   @@map("presupuestos")
@@ -270,4 +289,43 @@ model Archivo {
   @@index([clinicaId])
   @@index([pacienteId])
   @@map("archivos")
+}
+
+/// Catálogo de precios de la clínica (tratamientos): código, nombre, PVP y coste.
+model Tarifario {
+  id        String   @id @default(uuid())
+  clinicaId String   @map("clinica_id")
+  clinica   Clinica  @relation(fields: [clinicaId], references: [id])
+  codigo    String
+  nombre    String
+  familia   String?
+  pvp       Float
+  coste     Float    @default(0)
+  minutos   Int?
+  createdAt DateTime @default(now())
+
+  @@unique([clinicaId, codigo])
+  @@map("tarifario")
+}
+
+model Cobro {
+  id            String       @id @default(uuid())
+  clinicaId     String       @map("clinica_id")
+  clinica       Clinica      @relation(fields: [clinicaId], references: [id])
+  pacienteId    String       @map("paciente_id")
+  paciente      Paciente     @relation(fields: [pacienteId], references: [id])
+  presupuestoId String?      @map("presupuesto_id")
+  presupuesto   Presupuesto? @relation(fields: [presupuestoId], references: [id])
+  fecha         DateTime     @default(now())
+  importe       Float
+  forma         FormaCobro
+  tipo          TipoCobro    @default(pago)
+  concepto      String?
+  numero        Int
+  createdAt     DateTime     @default(now())
+  deletedAt     DateTime?    @map("deleted_at")
+
+  @@index([clinicaId, pacienteId])
+  @@index([clinicaId, fecha])
+  @@map("cobros")
 }

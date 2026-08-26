@@ -40,64 +40,79 @@ export function Pacientes() {
 
   return (
     <div>
-      <div className="entre">
-        <h2>Pacientes</h2>
-        <input placeholder="Buscar por nombre, DNI o teléfono…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <button className="btn pri" onClick={() => setMostrarForm((v) => !v)}>
-          {mostrarForm ? 'Cancelar' : 'Nuevo paciente'}
-        </button>
+      <div className="topbar">
+        <div>
+          <h1>Pacientes</h1>
+          <p>{pacientes.length} en la ficha de la clínica</p>
+        </div>
+        <div className="acciones">
+          <input placeholder="Buscar por nombre, DNI o teléfono…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <button className="btn pri" onClick={() => setMostrarForm((v) => !v)}>
+            {mostrarForm ? 'Cancelar' : '+ Nuevo paciente'}
+          </button>
+        </div>
       </div>
 
       {mostrarForm && (
-        <form className="card" onSubmit={crearPaciente}>
-          <label>
-            Nombre
-            <input type="text" name="nombre" required />
-          </label>
-          <label>
-            Apellidos
-            <input type="text" name="apellidos" required />
-          </label>
-          <label>
-            Teléfono
-            <input type="text" name="telefono" />
-          </label>
-          <label>
-            DNI
-            <input type="text" name="dni" />
-          </label>
-          <label>
-            Email
-            <input type="email" name="email" />
-          </label>
-          <button className="btn pri" type="submit">
-            Guardar
-          </button>
-        </form>
+        <div className="card">
+          <form onSubmit={crearPaciente}>
+            <div className="grid g3">
+              <div className="f">
+                <label>Nombre</label>
+                <input type="text" name="nombre" required />
+              </div>
+              <div className="f">
+                <label>Apellidos</label>
+                <input type="text" name="apellidos" required />
+              </div>
+              <div className="f">
+                <label>Teléfono</label>
+                <input type="text" name="telefono" />
+              </div>
+              <div className="f">
+                <label>DNI</label>
+                <input type="text" name="dni" />
+              </div>
+              <div className="f">
+                <label>Email</label>
+                <input type="email" name="email" />
+              </div>
+            </div>
+            <button className="btn pri" type="submit">
+              Guardar paciente
+            </button>
+          </form>
+        </div>
       )}
 
-      <table>
-        <thead>
-          <tr>
-            <th>Nombre</th>
-            <th>DNI</th>
-            <th>Teléfono</th>
-          </tr>
-        </thead>
-        <tbody>
-          {pacientes.map((p) => (
-            <tr key={p.id}>
-              <td>
-                <Link to={`/pacientes/${p.id}`}>
-                  {p.nombre} {p.apellidos}
-                </Link>
-              </td>
-              <td>{p.dni}</td>
-              <td>{p.telefono}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="card">
+        {pacientes.length === 0 ? (
+          <p className="vacio">Sin pacientes todavía.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>DNI</th>
+                <th>Teléfono</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pacientes.map((p) => (
+                <tr key={p.id} className="click">
+                  <td>
+                    <Link to={`/pacientes/${p.id}`} style={{ color: 'var(--grafito)', fontWeight: 600, textDecoration: 'none' }}>
+                      {p.nombre} {p.apellidos}
+                    </Link>
+                  </td>
+                  <td>{p.dni || '—'}</td>
+                  <td>{p.telefono || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }

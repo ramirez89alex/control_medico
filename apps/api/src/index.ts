@@ -8,6 +8,8 @@ import { pacientesRouter } from './routes/pacientes.js';
 import { citasRouter } from './routes/citas.js';
 import { catalogosRouter } from './routes/catalogos.js';
 import { archivosRouter } from './routes/archivos.js';
+import { presupuestosRouter } from './routes/presupuestos.js';
+import { cobrosRouter } from './routes/cobros.js';
 
 const app = express();
 
@@ -22,6 +24,8 @@ app.use('/pacientes', pacientesRouter);
 app.use('/citas', citasRouter);
 app.use('/catalogos', catalogosRouter);
 app.use('/archivos', archivosRouter);
+app.use('/presupuestos', presupuestosRouter);
+app.use('/cobros', cobrosRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);

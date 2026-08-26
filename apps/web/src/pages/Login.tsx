@@ -26,22 +26,29 @@ export function Login() {
   }
 
   return (
-    <div className="login-page">
-      <form className="login-card" onSubmit={onSubmit}>
-        <h1>PowerDent</h1>
-        <label>
-          Email
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
-        </label>
-        <label>
-          Contraseña
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        </label>
-        {error && <p className="error">{error}</p>}
-        <button className="btn pri" type="submit" disabled={enviando}>
-          {enviando ? 'Entrando…' : 'Entrar'}
-        </button>
-      </form>
+    <div className="portada" style={{ paddingTop: '8vh' }}>
+      <img className="plogo" src="/icon-192.png" alt="PowerDent" />
+      <p className="mini">Gestión clínica</p>
+      <div className="pcard" style={{ maxWidth: 380, margin: '20px auto 0', cursor: 'default' }}>
+        <form onSubmit={onSubmit} style={{ textAlign: 'left' }}>
+          <div className="f">
+            <label htmlFor="email">Email</label>
+            <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
+          </div>
+          <div className="f">
+            <label htmlFor="password">Contraseña</label>
+            <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          </div>
+          {error && (
+            <p className="mini" style={{ color: 'var(--rojo)' }}>
+              {error}
+            </p>
+          )}
+          <button className="btn pri" type="submit" style={{ width: '100%' }} disabled={enviando}>
+            {enviando ? 'Entrando…' : 'Entrar'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

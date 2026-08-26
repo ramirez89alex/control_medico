@@ -59,13 +59,19 @@ export function PacienteFicha() {
     cargar();
   }
 
-  if (!paciente) return <p>Cargando…</p>;
+  if (!paciente) return <p className="vacio">Cargando…</p>;
 
   return (
     <div>
-      <h2>
-        {paciente.nombre} {paciente.apellidos}
-      </h2>
+      <div className="topbar">
+        <div>
+          <h1>
+            {paciente.nombre} {paciente.apellidos}
+          </h1>
+          <p>{paciente.dni || paciente.telefono || 'Sin datos de contacto'}</p>
+        </div>
+      </div>
+
       <div className="tabs">
         <button className={tab === 'datos' ? 'on' : ''} onClick={() => setTab('datos')}>
           Datos
@@ -79,71 +85,101 @@ export function PacienteFicha() {
       </div>
 
       {tab === 'datos' && (
-        <div className="card">
-          <p>
-            <b>Teléfono:</b> {paciente.telefono || '—'}
-          </p>
-          <p>
-            <b>Email:</b> {paciente.email || '—'}
-          </p>
-          <p>
-            <b>DNI:</b> {paciente.dni || '—'}
-          </p>
-          <p>
-            <b>Alergias:</b> {paciente.alergias || '—'}
-          </p>
-          <p>
-            <b>Medicación:</b> {paciente.medicacion || '—'}
-          </p>
-          <p>
-            <b>Antecedentes:</b> {paciente.antecedentes || '—'}
-          </p>
+        <div className="card grid g2">
+          <div>
+            <label>Teléfono</label>
+            <p>{paciente.telefono || '—'}</p>
+          </div>
+          <div>
+            <label>Email</label>
+            <p>{paciente.email || '—'}</p>
+          </div>
+          <div>
+            <label>DNI</label>
+            <p>{paciente.dni || '—'}</p>
+          </div>
+          <div>
+            <label>Alergias</label>
+            <p>{paciente.alergias || '—'}</p>
+          </div>
+          <div>
+            <label>Medicación</label>
+            <p>{paciente.medicacion || '—'}</p>
+          </div>
+          <div>
+            <label>Antecedentes</label>
+            <p>{paciente.antecedentes || '—'}</p>
+          </div>
         </div>
       )}
 
       {tab === 'historia' && (
         <div>
-          <form className="card" onSubmit={anadirNota}>
-            <label>
-              Acto
-              <input type="text" name="acto" required />
-            </label>
-            <label>
-              Piezas
-              <input type="text" name="piezas" />
-            </label>
-            <label>
-              Nota
-              <textarea name="nota" required />
-            </label>
-            <button className="btn pri" type="submit">
-              Añadir a la historia
-            </button>
-          </form>
-          <ul className="historia-lista">
-            {paciente.historiaClinica.map((h) => (
-              <li key={h.id}>
-                <div className="mini">
-                  {new Date(h.fecha).toLocaleString('es-ES')} {h.piezas ? `· pieza ${h.piezas}` : ''}
+          <div className="card">
+            <form onSubmit={anadirNota}>
+              <div className="grid g3">
+                <div className="f">
+                  <label>Acto</label>
+                  <input type="text" name="acto" required />
                 </div>
-                <b>{h.acto}</b>
-                <p>{h.nota}</p>
-              </li>
-            ))}
-            {paciente.historiaClinica.length === 0 && <p>Sin entradas todavía.</p>}
-          </ul>
+                <div className="f">
+                  <label>Piezas</label>
+                  <input type="text" name="piezas" />
+                </div>
+              </div>
+              <div className="f">
+                <label>Nota</label>
+                <textarea name="nota" required />
+              </div>
+              <button className="btn pri" type="submit">
+                Añadir a la historia
+              </button>
+            </form>
+          </div>
+
+          <div className="card">
+            {paciente.historiaClinica.length === 0 ? (
+              <p className="vacio">Sin entradas todavía.</p>
+            ) : (
+              <div className="linea">
+                {paciente.historiaClinica.map((h) => (
+                  <div className="ev trat" key={h.id}>
+                    <div className="evf">
+                      {new Date(h.fecha).toLocaleDateString('es-ES')}
+                      <small>{new Date(h.fecha).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</small>
+                    </div>
+                    <div className="evc">
+                      <b>{h.acto}</b>
+                      {h.piezas && <span className="tag info" style={{ marginLeft: 6 }}>pieza {h.piezas}</span>}
+                      <p className="mini" style={{ marginTop: 4 }}>
+                        {h.nota}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {tab === 'archivos' && (
-        <ul>
-          {paciente.archivos.map((a) => (
-            <li key={a.id}>
-              {a.nombre} ({a.mime})
-            </li>
-          ))}
-          {paciente.archivos.length === 0 && <p>Sin archivos todavía.</p>}
-        </ul>
+        <div className="card">
+          {paciente.archivos.length === 0 ? (
+            <p className="vacio">Sin archivos todavía.</p>
+          ) : (
+            <table>
+              <tbody>
+                {paciente.archivos.map((a) => (
+                  <tr key={a.id}>
+                    <td>{a.nombre}</td>
+                    <td className="mini">{a.mime}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       )}
     </div>
   );

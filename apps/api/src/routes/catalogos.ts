@@ -42,3 +42,33 @@ catalogosRouter.post('/gabinetes', requireRol('admin'), async (req, res) => {
   const gabinete = await prisma.gabinete.create({ data: { ...parsed.data, clinicaId: clinicaDe(req) } });
   res.status(201).json(gabinete);
 });
+
+catalogosRouter.get('/tarifario', async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  const tarifario = await prisma.tarifario.findMany({
+    where: {
+      clinicaId: clinicaDe(req),
+      ...(q
+        ? { OR: [{ nombre: { contains: q, mode: 'insensitive' } }, { codigo: { contains: q, mode: 'insensitive' } }] }
+        : {}),
+    },
+    orderBy: [{ familia: 'asc' }, { codigo: 'asc' }],
+  });
+  res.json(tarifario);
+});
+
+const tarifarioSchema = z.object({
+  codigo: z.string().min(1),
+  nombre: z.string().min(1),
+  familia: z.string().optional().nullable(),
+  pvp: z.number().nonnegative(),
+  coste: z.number().nonnegative().default(0),
+  minutos: z.number().int().positive().optional().nullable(),
+});
+
+catalogosRouter.post('/tarifario', requireRol('admin'), async (req, res) => {
+  const parsed = tarifarioSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  const item = await prisma.tarifario.create({ data: { ...parsed.data, clinicaId: clinicaDe(req) } });
+  res.status(201).json(item);
+});
