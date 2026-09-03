@@ -90,6 +90,8 @@ model Clinica {
   laboratorio       Laboratorio[]
   contactos         Contacto[]
   accesosPaciente   AccesoPaciente[]
+  materiales        Material[]
+  materialConsumos  MaterialConsumo[]
 
   @@map("clinicas")
 }
@@ -174,6 +176,7 @@ model Paciente {
   cobros          Cobro[]
   laboratorio     Laboratorio[]
   accesos         AccesoPaciente[]
+  materialConsumos MaterialConsumo[]
 
   @@index([clinicaId])
   @@index([clinicaId, deletedAt])
@@ -271,6 +274,8 @@ model HistoriaClinica {
   autorId    String    @map("autor_id")
   createdAt  DateTime  @default(now())
   deletedAt  DateTime? @map("deleted_at")
+
+  materialConsumos MaterialConsumo[]
 
   @@index([clinicaId, pacienteId])
   @@map("historia_clinica")
@@ -394,6 +399,47 @@ model Laboratorio {
 
   @@index([clinicaId, estado])
   @@map("laboratorio")
+}
+
+/// Catálogo mínimo de materiales consumibles (composite, anestesia, guantes…), para
+/// descontar stock al registrar una sesión clínica. Versión reducida del `DB.stock` del
+/// HTML original — sin proveedores, días de entrega ni conteos de inventario; eso queda
+/// para un futuro bloque "Compras y Almacén" aparte.
+model Material {
+  id        String    @id @default(uuid())
+  clinicaId String    @map("clinica_id")
+  clinica   Clinica   @relation(fields: [clinicaId], references: [id])
+  nombre    String
+  unidad    String    @default("ud")
+  cantidad  Float     @default(0)
+  coste     Float     @default(0)
+  createdAt DateTime  @default(now())
+  deletedAt DateTime? @map("deleted_at")
+
+  consumos MaterialConsumo[]
+
+  @@index([clinicaId])
+  @@map("materiales")
+}
+
+/// Un consumo de material en una sesión concreta — descuenta `Material.cantidad` al crearse.
+model MaterialConsumo {
+  id                String           @id @default(uuid())
+  clinicaId         String           @map("clinica_id")
+  clinica           Clinica          @relation(fields: [clinicaId], references: [id])
+  materialId        String           @map("material_id")
+  material          Material         @relation(fields: [materialId], references: [id])
+  pacienteId        String           @map("paciente_id")
+  paciente          Paciente         @relation(fields: [pacienteId], references: [id])
+  historiaClinicaId String?          @map("historia_clinica_id")
+  historiaClinica   HistoriaClinica? @relation(fields: [historiaClinicaId], references: [id])
+  cantidad          Float
+  coste             Float
+  fecha             DateTime         @default(now())
+
+  @@index([clinicaId, pacienteId])
+  @@index([clinicaId, materialId])
+  @@map("material_consumos")
 }
 
 model Contacto {

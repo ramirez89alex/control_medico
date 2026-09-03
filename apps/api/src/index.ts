@@ -16,6 +16,7 @@ import { contactosRouter } from './routes/contactos.js';
 import { portalRouter } from './routes/portal.js';
 import { equipoRouter } from './routes/equipo.js';
 import { vozRouter } from './routes/voz.js';
+import { materialesRouter } from './routes/materiales.js';
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use('/contactos', contactosRouter);
 app.use('/portal', portalRouter);
 app.use('/equipo', equipoRouter);
 app.use('/voz', vozRouter);
+app.use('/materiales', materialesRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);

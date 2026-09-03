@@ -103,6 +103,22 @@ interface Clinica {
   email: string | null;
 }
 
+interface Material {
+  id: string;
+  nombre: string;
+  unidad: string;
+  cantidad: number;
+  coste: number;
+}
+
+interface ConsumoMaterial {
+  id: string;
+  fecha: string;
+  cantidad: number;
+  coste: number;
+  material: Material;
+}
+
 interface Trabajo {
   id: string;
   nombreLab: string | null;
@@ -114,7 +130,7 @@ interface Trabajo {
   estado: 'enviado' | 'recibido' | 'entregado';
 }
 
-type Tab = '360' | 'datos' | 'historia' | 'odontograma' | 'presupuestos' | 'cobros' | 'laboratorio' | 'archivos';
+type Tab = '360' | 'datos' | 'historia' | 'odontograma' | 'presupuestos' | 'cobros' | 'laboratorio' | 'material' | 'archivos';
 
 const FORMAS: Record<string, string> = {
   tarjeta: 'Tarjeta',
@@ -248,6 +264,8 @@ export function PacienteFicha() {
   const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([]);
   const [cobros, setCobros] = useState<Cobro[]>([]);
   const [laboratorios, setLaboratorios] = useState<Trabajo[]>([]);
+  const [materiales, setMateriales] = useState<Material[]>([]);
+  const [consumosMaterial, setConsumosMaterial] = useState<ConsumoMaterial[]>([]);
   const [clinica, setClinica] = useState<Clinica | null>(null);
   const [tab, setTab] = useState<Tab>('360');
   const [reFirmando, setReFirmando] = useState(false);
@@ -270,18 +288,20 @@ export function PacienteFicha() {
 
   async function cargar() {
     if (!id) return;
-    const [p, cs, ps, cb, lb] = await Promise.all([
+    const [p, cs, ps, cb, lb, cm] = await Promise.all([
       api.get<Paciente>(`/pacientes/${id}`),
       api.get<Cita[]>(`/citas?pacienteId=${id}`),
       api.get<Presupuesto[]>(`/presupuestos?pacienteId=${id}`),
       api.get<Cobro[]>(`/cobros?pacienteId=${id}`),
       api.get<Trabajo[]>(`/laboratorio?pacienteId=${id}`),
+      api.get<ConsumoMaterial[]>(`/materiales/consumos?pacienteId=${id}`),
     ]);
     setPaciente(p);
     setCitas(cs);
     setPresupuestos(ps);
     setCobros(cb);
     setLaboratorios(lb);
+    setConsumosMaterial(cm);
     setReFirmando(false);
   }
 
@@ -289,6 +309,7 @@ export function PacienteFicha() {
     cargar();
     api.get<Dentista[]>('/catalogos/dentistas').then(setDentistas);
     api.get<Clinica>('/catalogos/clinica').then(setClinica);
+    api.get<Material[]>('/materiales').then(setMateriales);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -379,16 +400,30 @@ export function PacienteFicha() {
         window.alert('No se pudo subir el audio; se guarda la nota sin él.');
       }
     }
+    const materialId = form.get('materialId');
+    const cantidadMaterial = Number(form.get('cantidadMaterial')) || 0;
     await api.post(`/pacientes/${id}/historia`, {
       acto: form.get('acto'),
       piezas: form.get('piezas') || undefined,
       nota: form.get('nota'),
       audioArchivoId,
+      materialId: materialId && cantidadMaterial > 0 ? materialId : undefined,
+      cantidadMaterial: materialId && cantidadMaterial > 0 ? cantidadMaterial : undefined,
     });
     (e.target as HTMLFormElement).reset();
     setAudioGrabado(null);
     setMensajeGrabacion('Micrófono listo');
+    if (materialId && cantidadMaterial > 0) api.get<Material[]>('/materiales').then(setMateriales);
     cargar();
+  }
+
+  async function anadirMaterial() {
+    const nombre = window.prompt('Nombre del material (p. ej. "Composite A2", "Anestesia carpule")');
+    if (!nombre) return;
+    const coste = Number(window.prompt('Coste por unidad (€)', '0')) || 0;
+    const cantidad = Number(window.prompt('Cantidad inicial en stock', '0')) || 0;
+    const nuevo = await api.post<Material>('/materiales', { nombre, unidad: 'ud', coste, cantidad });
+    setMateriales((m) => [...m, nuevo].sort((a, b) => a.nombre.localeCompare(b.nombre)));
   }
 
   function ciclarDiente(pieza: number) {
@@ -596,6 +631,9 @@ export function PacienteFicha() {
         <button className={tab === 'laboratorio' ? 'on' : ''} onClick={() => setTab('laboratorio')}>
           Laboratorio
         </button>
+        <button className={tab === 'material' ? 'on' : ''} onClick={() => setTab('material')}>
+          Material
+        </button>
         <button className={tab === 'archivos' ? 'on' : ''} onClick={() => setTab('archivos')}>
           Archivos
         </button>
@@ -799,6 +837,28 @@ export function PacienteFicha() {
               <div className="f">
                 <label>Nota clínica</label>
                 <textarea name="nota" placeholder="Anestesia, técnica, materiales, incidencias, indicaciones al paciente…" required />
+              </div>
+              <div className="f">
+                <label>Material consumido (descuenta stock)</label>
+                <div className="fila">
+                  <select name="materialId" style={{ flex: 1 }}>
+                    <option value="">— ninguno —</option>
+                    {materiales.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.nombre} ({m.cantidad} {m.unidad})
+                      </option>
+                    ))}
+                  </select>
+                  <button type="button" className="btn gh sm" onClick={anadirMaterial}>
+                    + Nuevo material
+                  </button>
+                </div>
+              </div>
+              <div className="grid g3">
+                <div className="f">
+                  <label>Cantidad usada</label>
+                  <input type="number" name="cantidadMaterial" defaultValue={0} min={0} step="1" />
+                </div>
               </div>
               <button className="btn pri" type="submit">
                 Guardar en la historia
@@ -1037,6 +1097,42 @@ export function PacienteFicha() {
                       <span className={TAG_ESTADO_LAB[t.estado] || 'tag'}>{t.estado}</span>
                     </td>
                     <td className="num">{eur(t.coste)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {tab === 'material' && (
+        <div className="card">
+          <h3>Material consumido por este paciente</h3>
+          <p className="mini">
+            Se registra al guardar cada sesión. Coste acumulado: <b>{eur(consumosMaterial.reduce((a, c) => a + c.coste, 0))}</b>
+          </p>
+          <hr />
+          {consumosMaterial.length === 0 ? (
+            <div className="vacio">Aún no se ha imputado material.</div>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Referencia</th>
+                  <th className="num">Cantidad</th>
+                  <th className="num">Coste</th>
+                </tr>
+              </thead>
+              <tbody>
+                {consumosMaterial.map((c) => (
+                  <tr key={c.id}>
+                    <td>{fechaCorta(c.fecha)}</td>
+                    <td>{c.material.nombre}</td>
+                    <td className="num">
+                      {c.cantidad} {c.material.unidad}
+                    </td>
+                    <td className="num">{eur(c.coste)}</td>
                   </tr>
                 ))}
               </tbody>

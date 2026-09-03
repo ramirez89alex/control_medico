@@ -147,6 +147,8 @@ const notaHistoriaSchema = z.object({
   piezas: z.string().optional().nullable(),
   nota: z.string().min(1),
   audioArchivoId: z.string().uuid().optional().nullable(),
+  materialId: z.string().uuid().optional().nullable(),
+  cantidadMaterial: z.number().positive().optional().nullable(),
 });
 
 pacientesRouter.post('/:id/historia', async (req, res) => {
@@ -156,9 +158,34 @@ pacientesRouter.post('/:id/historia', async (req, res) => {
   const paciente = await prisma.paciente.findFirst({ where: { id: req.params.id, clinicaId: clinicaDe(req), deletedAt: null } });
   if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
 
-  const entrada = await prisma.historiaClinica.create({
-    data: { ...parsed.data, clinicaId: clinicaDe(req), pacienteId: paciente.id, autorId: usuarioDe(req) },
+  const { materialId, cantidadMaterial, ...datosHistoria } = parsed.data;
+
+  let material: { id: string; coste: number } | null = null;
+  if (materialId && cantidadMaterial) {
+    material = await prisma.material.findFirst({ where: { id: materialId, clinicaId: clinicaDe(req), deletedAt: null }, select: { id: true, coste: true } });
+    if (!material) return res.status(404).json({ error: 'Material no encontrado' });
+  }
+
+  const entrada = await prisma.$transaction(async (tx) => {
+    const nueva = await tx.historiaClinica.create({
+      data: { ...datosHistoria, clinicaId: clinicaDe(req), pacienteId: paciente.id, autorId: usuarioDe(req) },
+    });
+    if (material && cantidadMaterial) {
+      await tx.materialConsumo.create({
+        data: {
+          clinicaId: clinicaDe(req),
+          materialId: material.id,
+          pacienteId: paciente.id,
+          historiaClinicaId: nueva.id,
+          cantidad: cantidadMaterial,
+          coste: material.coste * cantidadMaterial,
+        },
+      });
+      await tx.material.update({ where: { id: material.id }, data: { cantidad: { decrement: cantidadMaterial } } });
+    }
+    return nueva;
   });
+
   registrarAuditoria({
     clinicaId: clinicaDe(req),
     usuarioId: usuarioDe(req),
