@@ -14,6 +14,7 @@ import { Contactos } from './pages/Contactos';
 import { Portal } from './pages/Portal';
 import { AccesoPaciente } from './pages/AccesoPaciente';
 import { MiPortal } from './pages/MiPortal';
+import { Equipo } from './pages/Equipo';
 
 function RutaPrivada({ children }: { children: JSX.Element }) {
   const { usuario, cargando } = useAuth();
@@ -24,7 +25,7 @@ function RutaPrivada({ children }: { children: JSX.Element }) {
 
 const PROXIMAMENTE: Array<{ path: string; titulo: string; descripcion: string }> = [
   { path: '/kiosco', titulo: 'Área del paciente (modo quiosco)', descripcion: 'Tablet compartida en sala para confirmar llegada sin enlace individual.' },
-  { path: '/gestion', titulo: 'Gestión', descripcion: 'Facturación, banco, compras, almacén, equipo y marketing.' },
+  { path: '/gestion', titulo: 'Gestión', descripcion: 'Facturación, banco, compras, almacén y marketing.' },
 ];
 
 function Rutas() {
@@ -49,6 +50,7 @@ function Rutas() {
         <Route path="/lab" element={<Laboratorio />} />
         <Route path="/contactos" element={<Contactos />} />
         <Route path="/portal" element={<Portal />} />
+        <Route path="/equipo" element={<Equipo />} />
         {PROXIMAMENTE.map((p) => (
           <Route key={p.path} path={p.path} element={<Proximamente titulo={p.titulo} descripcion={p.descripcion} />} />
         ))}

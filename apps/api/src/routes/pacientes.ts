@@ -21,6 +21,7 @@ const pacienteSchema = z.object({
   aviso: z.string().optional().nullable(),
   origen: z.string().optional().nullable(),
   doctorId: z.string().uuid().optional().nullable(),
+  notasOdontograma: z.string().optional().nullable(),
 });
 
 pacientesRouter.get('/', async (req, res) => {
@@ -107,6 +108,28 @@ pacientesRouter.put('/:id/consentimiento', async (req, res) => {
     entidad: 'paciente',
     entidadId: paciente.id,
   });
+  res.json(paciente);
+});
+
+/** Igual orden que ESTADOS en el HTML original — cicla el estado de una pieza dental. */
+const ESTADOS_DIENTE = ['', 'caries', 'obturado', 'endo', 'corona', 'implante', 'ausente'] as const;
+
+const odontogramaSchema = z.object({ pieza: z.string().min(1) });
+
+pacientesRouter.post('/:id/odontograma', async (req, res) => {
+  const parsed = odontogramaSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+  const existente = await prisma.paciente.findFirst({ where: { id: req.params.id, clinicaId: clinicaDe(req), deletedAt: null } });
+  if (!existente) return res.status(404).json({ error: 'Paciente no encontrado' });
+
+  const odontograma = { ...(existente.odontograma as Record<string, string>) };
+  const actual = odontograma[parsed.data.pieza] || '';
+  const siguiente = ESTADOS_DIENTE[(ESTADOS_DIENTE.indexOf(actual as (typeof ESTADOS_DIENTE)[number]) + 1) % ESTADOS_DIENTE.length];
+  if (siguiente) odontograma[parsed.data.pieza] = siguiente;
+  else delete odontograma[parsed.data.pieza];
+
+  const paciente = await prisma.paciente.update({ where: { id: existente.id }, data: { odontograma } });
   res.json(paciente);
 });
 

@@ -11,6 +11,7 @@ export const env = {
   jwtRefreshSecret: required('JWT_REFRESH_SECRET'),
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
   s3: {
     endpoint: required('S3_ENDPOINT'),
     region: process.env.S3_REGION || 'us-east-1',

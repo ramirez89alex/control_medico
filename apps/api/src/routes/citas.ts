@@ -11,12 +11,18 @@ citasRouter.use(requireAuth, requireRol('admin', 'dentista', 'recepcion'));
 const fechaSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 citasRouter.get('/', async (req, res) => {
+  const pacienteId = req.query.pacienteId ? String(req.query.pacienteId) : undefined;
   const desde = fechaSchema.safeParse(req.query.desde).success ? String(req.query.desde) : undefined;
   const hasta = fechaSchema.safeParse(req.query.hasta).success ? String(req.query.hasta) : desde;
-  if (!desde) return res.status(400).json({ error: 'Falta el parámetro desde=YYYY-MM-DD' });
+  if (!desde && !pacienteId) return res.status(400).json({ error: 'Falta el parámetro desde=YYYY-MM-DD' });
 
   const citas = await prisma.cita.findMany({
-    where: { clinicaId: clinicaDe(req), deletedAt: null, fecha: { gte: desde, lte: hasta } },
+    where: {
+      clinicaId: clinicaDe(req),
+      deletedAt: null,
+      ...(desde ? { fecha: { gte: desde, lte: hasta } } : {}),
+      ...(pacienteId ? { pacienteId } : {}),
+    },
     include: { paciente: true, dentista: true, gabinete: true },
     orderBy: [{ fecha: 'asc' }, { hora: 'asc' }],
   });
@@ -80,6 +86,7 @@ citasRouter.post('/', async (req, res) => {
 const citaUpdateSchema = citaSchema.partial().extend({
   estado: z.enum(['programada', 'llegado', 'silla', 'hecha', 'cancelada']).optional(),
   confirmada: z.boolean().optional(),
+  confirmPedida: z.string().datetime().optional(),
 });
 
 citasRouter.put('/:id', async (req, res) => {
@@ -89,7 +96,11 @@ citasRouter.put('/:id', async (req, res) => {
   const existente = await prisma.cita.findFirst({ where: { id: req.params.id, clinicaId: clinicaDe(req), deletedAt: null } });
   if (!existente) return res.status(404).json({ error: 'Cita no encontrada' });
 
-  const cita = await prisma.cita.update({ where: { id: existente.id }, data: parsed.data });
+  const { confirmPedida, ...resto } = parsed.data;
+  const cita = await prisma.cita.update({
+    where: { id: existente.id },
+    data: { ...resto, ...(confirmPedida ? { confirmPedida: new Date(confirmPedida) } : {}) },
+  });
   registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: usuarioDe(req), accion: 'editar', entidad: 'cita', entidadId: cita.id });
   res.json(cita);
 });

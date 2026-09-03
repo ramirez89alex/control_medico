@@ -17,8 +17,9 @@ function estadoDesdeFases(fases: Record<string, string>) {
 }
 
 laboratorioRouter.get('/', async (req, res) => {
+  const pacienteId = req.query.pacienteId ? String(req.query.pacienteId) : undefined;
   const trabajos = await prisma.laboratorio.findMany({
-    where: { clinicaId: clinicaDe(req), deletedAt: null },
+    where: { clinicaId: clinicaDe(req), deletedAt: null, ...(pacienteId ? { pacienteId } : {}) },
     include: { paciente: true },
     orderBy: { fechaPrevista: 'asc' },
   });

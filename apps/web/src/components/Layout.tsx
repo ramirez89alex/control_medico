@@ -15,6 +15,7 @@ const MENU: Array<{ sep: string } | { to: string; label: string }> = [
   { to: '/lab', label: 'Laboratorio y placas' },
   { to: '/contactos', label: 'Contactos' },
   { sep: 'Reservado' },
+  { to: '/equipo', label: 'Equipo' },
   { to: '/gestion', label: 'Gestión 🔒' },
 ];
 

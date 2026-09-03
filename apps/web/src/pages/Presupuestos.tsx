@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { costeTotalPresupuesto, financiacion, totalPresupuesto } from '@powerdent/shared';
 import type { LineaPresupuesto } from '@powerdent/shared';
 import { api } from '../lib/api';
@@ -67,6 +68,7 @@ function borradorVacio(pacienteId = ''): Borrador {
 }
 
 export function Presupuestos() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [lista, setLista] = useState<Presupuesto[]>([]);
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [tarifario, setTarifario] = useState<ItemTarifario[]>([]);
@@ -86,6 +88,15 @@ export function Presupuestos() {
     cargar();
     api.get<Paciente[]>('/pacientes').then(setPacientes);
     api.get<ItemTarifario[]>('/catalogos/tarifario').then(setTarifario);
+  }, []);
+
+  useEffect(() => {
+    const pacienteId = searchParams.get('paciente');
+    if (pacienteId) {
+      nuevo(pacienteId);
+      setSearchParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const emitidos = lista.length;

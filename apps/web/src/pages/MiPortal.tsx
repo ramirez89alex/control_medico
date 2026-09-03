@@ -152,7 +152,7 @@ export function MiPortal() {
             <b>No tienes cita para hoy</b>
             {proximaCita && (
               <div className="mini">
-                Tu próxima cita: {new Date(proximaCita.fecha).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })} a las{' '}
+                Tu próxima cita: {new Date(`${proximaCita.fecha}T00:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })} a las{' '}
                 {proximaCita.hora}
               </div>
             )}

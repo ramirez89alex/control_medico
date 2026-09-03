@@ -6,6 +6,14 @@ import { clinicaDe, requireAuth, requireRol } from '../middleware/auth.js';
 export const catalogosRouter = Router();
 catalogosRouter.use(requireAuth, requireRol('admin', 'dentista', 'recepcion'));
 
+catalogosRouter.get('/clinica', async (req, res) => {
+  const clinica = await prisma.clinica.findUniqueOrThrow({
+    where: { id: clinicaDe(req) },
+    select: { nombre: true, nif: true, direccion: true, cp: true, ciudad: true, email: true },
+  });
+  res.json(clinica);
+});
+
 catalogosRouter.get('/dentistas', async (req, res) => {
   const dentistas = await prisma.dentista.findMany({ where: { clinicaId: clinicaDe(req) }, orderBy: { nombre: 'asc' } });
   res.json(dentistas);
