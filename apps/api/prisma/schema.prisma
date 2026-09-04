@@ -60,6 +60,7 @@ enum TipoContacto {
 model Clinica {
   id          String   @id @default(uuid())
   nombre      String
+  titular     String?
   nif         String?
   direccion   String?
   cp          String?
@@ -67,12 +68,16 @@ model Clinica {
   telefono    String?
   email       String?
   colegiado   String?
+  dpd         String?
   iva         Float    @default(0)
   prefijo     String   @default("34")
   idioma      String   @default("es")
   horario     Json // { "1": {"abre":"09:00","cierra":"20:00"}, "0": null, ... }
   finCuotas   Int      @default(12)
   finTIN      Float    @default(15)
+  banco       String?
+  pasarela    String?
+  iban        String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
