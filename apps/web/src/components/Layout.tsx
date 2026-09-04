@@ -11,7 +11,6 @@ const MENU: Array<{ sep: string } | { to: string; label: string }> = [
   { to: '/cobros', label: 'Cobros' },
   { sep: 'Paciente' },
   { to: '/portal', label: 'Portal del paciente' },
-  { to: '/kiosco', label: 'Área del paciente' },
   { to: '/lab', label: 'Laboratorio y placas' },
   { to: '/contactos', label: 'Contactos' },
   { sep: 'Reservado' },

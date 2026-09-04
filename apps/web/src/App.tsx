@@ -24,7 +24,6 @@ function RutaPrivada({ children }: { children: JSX.Element }) {
 }
 
 const PROXIMAMENTE: Array<{ path: string; titulo: string; descripcion: string }> = [
-  { path: '/kiosco', titulo: 'Área del paciente (modo quiosco)', descripcion: 'Tablet compartida en sala para confirmar llegada sin enlace individual.' },
   { path: '/gestion', titulo: 'Gestión', descripcion: 'Facturación, banco, compras, almacén y marketing.' },
 ];
 

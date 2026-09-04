@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
 import { api } from '../lib/api';
 import { Modal } from '../components/Modal';
 
@@ -15,6 +16,17 @@ export function Portal() {
   const [enlace, setEnlace] = useState<{ paciente: Paciente; url: string } | null>(null);
   const [generando, setGenerando] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
+  const [qrUrl, setQrUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!enlace) {
+      setQrUrl(null);
+      return;
+    }
+    QRCode.toDataURL(enlace.url, { margin: 1, width: 220 })
+      .then(setQrUrl)
+      .catch(() => setQrUrl(null));
+  }, [enlace]);
 
   async function buscar() {
     setPacientes(await api.get<Paciente[]>(`/pacientes?q=${encodeURIComponent(q)}`));
@@ -101,8 +113,13 @@ export function Portal() {
             Acceso de {enlace.paciente.nombre} {enlace.paciente.apellidos}
           </h2>
           <p className="mini" style={{ marginTop: 8 }}>
-            Válido durante 15 minutos y de un solo uso. Cópialo o envíalo por WhatsApp.
+            Válido durante 15 minutos y de un solo uso. Que lo escanee con su móvil ahí mismo, o cópialo/envíalo por WhatsApp.
           </p>
+          {qrUrl && (
+            <div style={{ textAlign: 'center', margin: '14px 0' }}>
+              <img src={qrUrl} alt="Código QR de acceso" width={180} height={180} style={{ border: '1px solid var(--linea)', borderRadius: 8 }} />
+            </div>
+          )}
           <div className="f" style={{ marginTop: 10 }}>
             <input readOnly value={enlace.url} onFocus={(e) => e.target.select()} />
           </div>

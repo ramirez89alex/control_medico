@@ -40,6 +40,15 @@ interface Historia {
   piezas: string | null;
 }
 
+interface Consentimiento {
+  datos: boolean;
+  tratamiento: boolean;
+  imagenes: boolean;
+  comercial: boolean;
+  fecha: string | null;
+  firmaUrl: string | null;
+}
+
 interface DatosPortal {
   paciente: { id: string; nombre: string; apellidos: string };
   citaHoy: Cita | null;
@@ -48,6 +57,7 @@ interface DatosPortal {
   presupuestos: Presupuesto[];
   cobros: Cobro[];
   saldo: { facturado: number; pagos: number; pendiente: number };
+  consentimiento: Consentimiento;
 }
 
 function eur(n: number) {
@@ -108,7 +118,7 @@ export function MiPortal() {
       </div>
     );
 
-  const { paciente, citaHoy, proximaCita, historia, presupuestos, cobros, saldo } = datos;
+  const { paciente, citaHoy, proximaCita, historia, presupuestos, cobros, saldo, consentimiento } = datos;
   const llegado = citaHoy && LLEGADO.includes(citaHoy.estado);
 
   return (
@@ -252,6 +262,33 @@ export function MiPortal() {
             <div className="vacio">Sin pagos registrados.</div>
           )}
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: 14 }}>
+        <h3>Consentimiento y protección de datos</h3>
+        <hr />
+        {consentimiento.firmaUrl ? (
+          <>
+            <div className="fila" style={{ flexWrap: 'wrap', gap: 8 }}>
+              <span className={`tag ${consentimiento.datos ? 'ok' : 'bad'}`}>Tratamiento de datos {consentimiento.datos ? 'aceptado' : 'sin aceptar'}</span>
+              <span className={`tag ${consentimiento.tratamiento ? 'ok' : 'bad'}`}>Tratamiento clínico {consentimiento.tratamiento ? 'aceptado' : 'sin aceptar'}</span>
+              <span className={`tag ${consentimiento.imagenes ? 'ok' : ''}`}>Imágenes clínicas {consentimiento.imagenes ? 'autorizadas' : 'no autorizadas'}</span>
+              <span className={`tag ${consentimiento.comercial ? 'ok' : ''}`}>Comunicaciones {consentimiento.comercial ? 'autorizadas' : 'no autorizadas'}</span>
+            </div>
+            {consentimiento.fecha && (
+              <p className="mini" style={{ marginTop: 8 }}>
+                Firmado el {new Date(consentimiento.fecha).toLocaleDateString('es-ES')}
+              </p>
+            )}
+            <img
+              src={consentimiento.firmaUrl}
+              alt="Firma del consentimiento"
+              style={{ border: '1px solid var(--linea)', borderRadius: 8, background: '#fff', maxWidth: '100%', height: 110, objectFit: 'contain', marginTop: 8 }}
+            />
+          </>
+        ) : (
+          <div className="vacio">Todavía no hay un consentimiento firmado. Pídelo en recepción en tu próxima visita.</div>
+        )}
       </div>
     </div>
   );
