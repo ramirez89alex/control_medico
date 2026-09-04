@@ -78,6 +78,7 @@ model Clinica {
   banco       String?
   pasarela    String?
   iban        String?
+  gestionCodigoHash String? @map("gestion_codigo_hash")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

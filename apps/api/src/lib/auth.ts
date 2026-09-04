@@ -36,3 +36,19 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
 export function verifyRefreshToken(token: string): { usuarioId?: string; pacienteId?: string } {
   return jwt.verify(token, env.jwtRefreshSecret) as { usuarioId?: string; pacienteId?: string };
 }
+
+export interface GestionTokenPayload {
+  clinicaId: string;
+  usuarioId: string;
+}
+
+/** Token de corta duración que certifica que el código de administración de Gestión fue verificado. */
+export function signGestionToken(payload: GestionTokenPayload): string {
+  return jwt.sign({ ...payload, gestion: true }, env.jwtAccessSecret, { expiresIn: '45m' });
+}
+
+export function verifyGestionToken(token: string): GestionTokenPayload {
+  const payload = jwt.verify(token, env.jwtAccessSecret) as GestionTokenPayload & { gestion?: boolean };
+  if (!payload.gestion) throw new Error('Token de gestión inválido');
+  return payload;
+}

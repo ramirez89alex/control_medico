@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import type { Rol } from '@powerdent/shared';
-import { verifyAccessToken } from '../lib/auth.js';
+import { verifyAccessToken, verifyGestionToken } from '../lib/auth.js';
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -30,6 +30,21 @@ export function requireRol(...roles: Rol[]) {
     if (!roles.includes(req.usuario.rol)) return res.status(403).json({ error: 'Sin permiso' });
     next();
   };
+}
+
+/** Exige que la sesión haya verificado el código de administración de Gestión (cabecera X-Gestion-Token). */
+export function requireGestion(req: Request, res: Response, next: NextFunction) {
+  if (!req.usuario) return res.status(401).json({ error: 'No autenticado' });
+  const header = req.headers['x-gestion-token'];
+  const token = typeof header === 'string' ? header : undefined;
+  if (!token) return res.status(423).json({ error: 'Gestión bloqueada: introduce el código de administración' });
+  try {
+    const payload = verifyGestionToken(token);
+    if (payload.clinicaId !== req.usuario.clinicaId) throw new Error('Clínica no coincide');
+    next();
+  } catch {
+    return res.status(423).json({ error: 'Gestión bloqueada: introduce el código de administración' });
+  }
 }
 
 /** Exige una sesión de paciente (emitida por /auth/paciente/entrar), no de personal. */

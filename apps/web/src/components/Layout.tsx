@@ -15,7 +15,6 @@ const MENU: Array<{ sep: string } | { to: string; label: string }> = [
   { to: '/contactos', label: 'Contactos' },
   { sep: 'Reservado' },
   { to: '/equipo', label: 'Equipo' },
-  { to: '/ajustes', label: 'Ajustes' },
   { to: '/gestion', label: 'Gestión 🔒' },
 ];
 

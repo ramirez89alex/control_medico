@@ -1,11 +1,12 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/auth-context';
+import { GestionProvider } from './lib/gestion-context';
+import { GestionGate } from './components/GestionGate';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
 import { Agenda } from './pages/Agenda';
 import { Pacientes } from './pages/Pacientes';
 import { PacienteFicha } from './pages/PacienteFicha';
-import { Proximamente } from './pages/Proximamente';
 import { Presupuestos } from './pages/Presupuestos';
 import { Cobros } from './pages/Cobros';
 import { Sillon } from './pages/Sillon';
@@ -15,6 +16,7 @@ import { Portal } from './pages/Portal';
 import { AccesoPaciente } from './pages/AccesoPaciente';
 import { MiPortal } from './pages/MiPortal';
 import { Equipo } from './pages/Equipo';
+import { Gestion } from './pages/Gestion';
 import { Ajustes } from './pages/Ajustes';
 
 function RutaPrivada({ children }: { children: JSX.Element }) {
@@ -23,10 +25,6 @@ function RutaPrivada({ children }: { children: JSX.Element }) {
   if (!usuario) return <Navigate to="/login" replace />;
   return children;
 }
-
-const PROXIMAMENTE: Array<{ path: string; titulo: string; descripcion: string }> = [
-  { path: '/gestion', titulo: 'Gestión', descripcion: 'Facturación, banco, compras y almacén, y marketing.' },
-];
 
 function Rutas() {
   return (
@@ -37,7 +35,9 @@ function Rutas() {
       <Route
         element={
           <RutaPrivada>
-            <Layout />
+            <GestionProvider>
+              <Layout />
+            </GestionProvider>
           </RutaPrivada>
         }
       >
@@ -51,10 +51,15 @@ function Rutas() {
         <Route path="/contactos" element={<Contactos />} />
         <Route path="/portal" element={<Portal />} />
         <Route path="/equipo" element={<Equipo />} />
-        <Route path="/ajustes" element={<Ajustes />} />
-        {PROXIMAMENTE.map((p) => (
-          <Route key={p.path} path={p.path} element={<Proximamente titulo={p.titulo} descripcion={p.descripcion} />} />
-        ))}
+        <Route path="/gestion" element={<Gestion />} />
+        <Route
+          path="/gestion/ajustes"
+          element={
+            <GestionGate>
+              <Ajustes />
+            </GestionGate>
+          }
+        />
         <Route path="/" element={<Navigate to="/agenda" replace />} />
       </Route>
     </Routes>

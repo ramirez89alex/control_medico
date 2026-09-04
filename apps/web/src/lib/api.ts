@@ -6,6 +6,16 @@ export function setAccessToken(token: string | null) {
   accessToken = token;
 }
 
+let gestionToken: string | null = null;
+
+export function setGestionToken(token: string | null) {
+  gestionToken = token;
+}
+
+export function getGestionToken() {
+  return gestionToken;
+}
+
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -29,6 +39,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}, reint
   const headers = new Headers(options.headers);
   headers.set('Content-Type', 'application/json');
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
+  if (gestionToken) headers.set('X-Gestion-Token', gestionToken);
 
   const res = await fetch(`${API_URL}${path}`, { ...options, headers, credentials: 'include' });
 

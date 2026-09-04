@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { clinicaDe, requireAuth, requireRol } from '../middleware/auth.js';
+import { clinicaDe, requireAuth, requireGestion, requireRol } from '../middleware/auth.js';
 
 export const catalogosRouter = Router();
 catalogosRouter.use(requireAuth, requireRol('admin', 'dentista', 'recepcion'));
@@ -52,7 +52,7 @@ const clinicaUpdateSchema = z.object({
   iban: z.string().optional().nullable(),
 });
 
-catalogosRouter.put('/clinica', requireRol('admin'), async (req, res) => {
+catalogosRouter.put('/clinica', requireGestion, async (req, res) => {
   const parsed = clinicaUpdateSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   const clinica = await prisma.clinica.update({ where: { id: clinicaDe(req) }, data: parsed.data, select: clinicaSelect });
@@ -89,14 +89,14 @@ const gabineteSchema = z.object({
   uso: z.string().optional().nullable(),
 });
 
-catalogosRouter.post('/gabinetes', requireRol('admin'), async (req, res) => {
+catalogosRouter.post('/gabinetes', requireGestion, async (req, res) => {
   const parsed = gabineteSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   const gabinete = await prisma.gabinete.create({ data: { ...parsed.data, clinicaId: clinicaDe(req) } });
   res.status(201).json(gabinete);
 });
 
-catalogosRouter.put('/gabinetes/:id', requireRol('admin'), async (req, res) => {
+catalogosRouter.put('/gabinetes/:id', requireGestion, async (req, res) => {
   const parsed = gabineteSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   const existe = await prisma.gabinete.findFirst({ where: { id: req.params.id, clinicaId: clinicaDe(req) } });
@@ -105,7 +105,7 @@ catalogosRouter.put('/gabinetes/:id', requireRol('admin'), async (req, res) => {
   res.json(gabinete);
 });
 
-catalogosRouter.delete('/gabinetes/:id', requireRol('admin'), async (req, res) => {
+catalogosRouter.delete('/gabinetes/:id', requireGestion, async (req, res) => {
   const existe = await prisma.gabinete.findFirst({ where: { id: req.params.id, clinicaId: clinicaDe(req) } });
   if (!existe) return res.status(404).json({ error: 'No encontrado' });
   try {
@@ -140,14 +140,14 @@ const tarifarioSchema = z.object({
   minutos: z.number().int().positive().optional().nullable(),
 });
 
-catalogosRouter.post('/tarifario', requireRol('admin'), async (req, res) => {
+catalogosRouter.post('/tarifario', requireGestion, async (req, res) => {
   const parsed = tarifarioSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   const item = await prisma.tarifario.create({ data: { ...parsed.data, clinicaId: clinicaDe(req) } });
   res.status(201).json(item);
 });
 
-catalogosRouter.put('/tarifario/:id', requireRol('admin'), async (req, res) => {
+catalogosRouter.put('/tarifario/:id', requireGestion, async (req, res) => {
   const parsed = tarifarioSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   const existe = await prisma.tarifario.findFirst({ where: { id: req.params.id, clinicaId: clinicaDe(req) } });
@@ -156,7 +156,7 @@ catalogosRouter.put('/tarifario/:id', requireRol('admin'), async (req, res) => {
   res.json(item);
 });
 
-catalogosRouter.delete('/tarifario/:id', requireRol('admin'), async (req, res) => {
+catalogosRouter.delete('/tarifario/:id', requireGestion, async (req, res) => {
   const existe = await prisma.tarifario.findFirst({ where: { id: req.params.id, clinicaId: clinicaDe(req) } });
   if (!existe) return res.status(404).json({ error: 'No encontrado' });
   await prisma.tarifario.delete({ where: { id: req.params.id } });
