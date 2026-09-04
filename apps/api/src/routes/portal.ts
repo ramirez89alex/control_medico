@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { saldoPaciente } from '@powerdent/shared';
 import { prisma } from '../lib/prisma.js';
-import { pacienteDe, requireAuth, requirePaciente } from '../middleware/auth.js';
+import { clinicaDe, pacienteDe, requireAuth, requirePaciente } from '../middleware/auth.js';
 import { presignDescarga } from '../lib/s3.js';
 
 export const portalRouter = Router();
@@ -14,8 +14,12 @@ function hoyISO() {
 portalRouter.get('/mi', async (req, res) => {
   const pacienteId = pacienteDe(req);
 
-  const [paciente, citaHoy, proximaCita, historia, presupuestos, cobros] = await Promise.all([
+  const [paciente, clinica, citaHoy, proximaCita, historia, presupuestos, cobros] = await Promise.all([
     prisma.paciente.findUniqueOrThrow({ where: { id: pacienteId } }),
+    prisma.clinica.findUniqueOrThrow({
+      where: { id: clinicaDe(req) },
+      select: { nombre: true, nif: true, direccion: true, cp: true, ciudad: true, email: true },
+    }),
     prisma.cita.findFirst({
       where: { pacienteId, fecha: hoyISO(), deletedAt: null },
       include: { dentista: true },
@@ -45,7 +49,20 @@ portalRouter.get('/mi', async (req, res) => {
   }
 
   res.json({
-    paciente: { id: paciente.id, nombre: paciente.nombre, apellidos: paciente.apellidos },
+    paciente: {
+      id: paciente.id,
+      nombre: paciente.nombre,
+      apellidos: paciente.apellidos,
+      dni: paciente.dni,
+      nacimiento: paciente.nacimiento,
+      telefono: paciente.telefono,
+      email: paciente.email,
+      direccion: paciente.direccion,
+      alergias: paciente.alergias,
+      medicacion: paciente.medicacion,
+      antecedentes: paciente.antecedentes,
+    },
+    clinica,
     citaHoy,
     proximaCita,
     historia,

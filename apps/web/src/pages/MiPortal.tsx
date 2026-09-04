@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { apiPaciente, refrescarSesionPaciente, salirPaciente } from '../lib/api-paciente';
+import { Modal } from '../components/Modal';
+import { ConsentimientoDocumento } from '../components/ConsentimientoDocumento';
+import type { ClinicaLegal } from '../lib/legal';
 
 interface Dentista {
   nombre: string;
@@ -49,8 +53,23 @@ interface Consentimiento {
   firmaUrl: string | null;
 }
 
+interface PacientePortal {
+  id: string;
+  nombre: string;
+  apellidos: string;
+  dni: string | null;
+  nacimiento: string | null;
+  telefono: string | null;
+  email: string | null;
+  direccion: string | null;
+  alergias: string | null;
+  medicacion: string | null;
+  antecedentes: string | null;
+}
+
 interface DatosPortal {
-  paciente: { id: string; nombre: string; apellidos: string };
+  paciente: PacientePortal;
+  clinica: ClinicaLegal;
   citaHoy: Cita | null;
   proximaCita: { fecha: string; hora: string } | null;
   historia: Historia[];
@@ -80,6 +99,7 @@ export function MiPortal() {
   const [datos, setDatos] = useState<DatosPortal | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
+  const [viendoConsentimiento, setViendoConsentimiento] = useState(false);
 
   async function cargar() {
     try {
@@ -118,7 +138,7 @@ export function MiPortal() {
       </div>
     );
 
-  const { paciente, citaHoy, proximaCita, historia, presupuestos, cobros, saldo, consentimiento } = datos;
+  const { paciente, clinica, citaHoy, proximaCita, historia, presupuestos, cobros, saldo, consentimiento } = datos;
   const llegado = citaHoy && LLEGADO.includes(citaHoy.estado);
 
   return (
@@ -285,11 +305,36 @@ export function MiPortal() {
               alt="Firma del consentimiento"
               style={{ border: '1px solid var(--linea)', borderRadius: 8, background: '#fff', maxWidth: '100%', height: 110, objectFit: 'contain', marginTop: 8 }}
             />
+            <button className="btn gh" style={{ marginTop: 10 }} onClick={() => setViendoConsentimiento(true)}>
+              Ver consentimiento firmado
+            </button>
           </>
         ) : (
           <div className="vacio">Todavía no hay un consentimiento firmado. Pídelo en recepción en tu próxima visita.</div>
         )}
       </div>
+
+      {viendoConsentimiento && (
+        <Modal onClose={() => setViendoConsentimiento(false)} ancho={720}>
+          <ConsentimientoDocumento clinica={clinica} paciente={paciente} consentimiento={consentimiento} />
+          <div className="fila" style={{ justifyContent: 'flex-end', marginTop: 14 }}>
+            <button className="btn gh" onClick={() => setViendoConsentimiento(false)}>
+              Cerrar
+            </button>
+            <button className="btn pri" onClick={() => window.print()}>
+              Imprimir / Guardar PDF
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {viendoConsentimiento &&
+        createPortal(
+          <div id="print">
+            <ConsentimientoDocumento clinica={clinica} paciente={paciente} consentimiento={consentimiento} />
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
