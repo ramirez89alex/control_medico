@@ -176,8 +176,7 @@ html,body{max-width:100%;overflow-x:hidden}
 img,canvas,video,audio{max-width:100%}
 .grid>*{min-width:0}
 .card{overflow-wrap:anywhere}
-td,.kpi,.mini,.tag{overflow-wrap:anywhere}
-.tag{white-space:normal}
+td,.kpi,.mini{overflow-wrap:anywhere}
 .entre>*{min-width:0}
 .topbar h1{overflow-wrap:anywhere}
 
@@ -208,7 +207,7 @@ td,.kpi,.mini,.tag{overflow-wrap:anywhere}
   .acciones{width:100%}
   .acciones .btn{flex:1 1 auto;min-height:42px}
   .card{padding:14px;overflow-x:auto}
-  table{width:100%}
+  table{width:100%;min-width:540px}
   td{white-space:normal;overflow-wrap:anywhere}
   th{white-space:nowrap}
   input,select,textarea{font-size:16px;max-width:100%!important}
