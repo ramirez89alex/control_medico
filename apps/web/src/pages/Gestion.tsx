@@ -84,6 +84,77 @@ function CambiarCodigo() {
   );
 }
 
+const RESET_CONFIRMACION = 'BORRAR TODO';
+
+function ResetDatos() {
+  const navigate = useNavigate();
+  const [abierto, setAbierto] = useState(false);
+  const [texto, setTexto] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [cargando, setCargando] = useState(false);
+
+  async function confirmar() {
+    setCargando(true);
+    setError(null);
+    try {
+      await api.post('/gestion/reset-datos-clinicos', { confirmacion: texto });
+      navigate('/agenda');
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'No se pudo vaciar la clínica');
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  return (
+    <div className="card" style={{ borderColor: 'var(--rojo)' }}>
+      <div className="entre">
+        <h3 style={{ color: 'var(--rojo)' }}>Vaciar datos de ejemplo</h3>
+        {!abierto && (
+          <button className="btn gh sm" onClick={() => setAbierto(true)}>
+            Empezar de cero
+          </button>
+        )}
+      </div>
+      <hr />
+      <p className="mini">
+        Borra permanentemente pacientes, citas, historia clínica, presupuestos, cobros, facturas, laboratorio, banco, compras/almacén,
+        campañas e ideas — pensado para quitar los datos de prueba antes de usar la clínica de verdad. <b>No se puede deshacer.</b>
+      </p>
+      <p className="mini">Se mantienen: datos de la clínica, tarifario, gabinetes, equipo, usuarios de acceso y el código de Gestión.</p>
+      {abierto && (
+        <>
+          <div className="f" style={{ marginTop: 10 }}>
+            <label>Escribe "{RESET_CONFIRMACION}" para confirmar</label>
+            <input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder={RESET_CONFIRMACION} />
+          </div>
+          {error && (
+            <p className="mini" style={{ color: 'var(--rojo)' }}>
+              {error}
+            </p>
+          )}
+          <div className="fila" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
+            <button
+              type="button"
+              className="btn gh"
+              onClick={() => {
+                setAbierto(false);
+                setTexto('');
+                setError(null);
+              }}
+            >
+              Cancelar
+            </button>
+            <button className="btn dan" disabled={cargando || texto !== RESET_CONFIRMACION} onClick={confirmar}>
+              {cargando ? 'Vaciando…' : 'Vaciar clínica'}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function GestionContenido() {
   const { usuario } = useAuth();
   const { bloquear } = useGestion();
@@ -128,6 +199,7 @@ function GestionContenido() {
       </div>
 
       {usuario?.rol === 'admin' && <CambiarCodigo />}
+      {usuario?.rol === 'admin' && <ResetDatos />}
     </div>
   );
 }

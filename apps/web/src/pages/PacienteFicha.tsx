@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { hoyISO, pendientePaciente, saldoPaciente, totalPresupuesto } from '@powerdent/shared';
 import type { LineaPresupuesto } from '@powerdent/shared';
 import { api } from '../lib/api';
@@ -7,6 +7,7 @@ import { Modal } from '../components/Modal';
 import { FirmaCanvas } from '../components/FirmaCanvas';
 import { subirArchivo } from '../lib/archivos';
 import { textoLegal } from '../lib/legal';
+import { useAuth } from '../lib/auth-context';
 
 interface Archivo {
   id: string;
@@ -228,6 +229,8 @@ function AudioSesion({ archivoId }: { archivoId: string }) {
 
 export function PacienteFicha() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { usuario } = useAuth();
   const [paciente, setPaciente] = useState<Paciente | null>(null);
   const [dentistas, setDentistas] = useState<Dentista[]>([]);
   const [citas, setCitas] = useState<Cita[]>([]);
@@ -495,6 +498,13 @@ export function PacienteFicha() {
     }
   }
 
+  async function borrarPaciente() {
+    if (!id || !paciente) return;
+    if (!confirm(`¿Eliminar a ${paciente.nombre} ${paciente.apellidos}? Desaparece de las listas y búsquedas; su historia clínica se conserva archivada (obligación legal).`)) return;
+    await api.del(`/pacientes/${id}`);
+    navigate('/pacientes');
+  }
+
   if (!paciente) return <p className="vacio">Cargando…</p>;
 
   const presupuestosAceptados = presupuestos.filter((p) => p.estado === 'aceptado').map((p) => ({ lineas: mapLineas(p.lineas), dto: p.descuentoPct }));
@@ -583,6 +593,11 @@ export function PacienteFicha() {
           <Link className="btn pri" style={{ textDecoration: 'none' }} to={`/presupuestos?paciente=${paciente.id}`}>
             Presupuesto rápido
           </Link>
+          {usuario?.rol === 'admin' && (
+            <button className="btn gh" onClick={borrarPaciente}>
+              Eliminar paciente
+            </button>
+          )}
         </div>
       </div>
 
