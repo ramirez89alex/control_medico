@@ -1,9 +1,24 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
+// El access token dura 15m en el servidor (ver signAccessToken en apps/api/src/lib/auth.ts);
+// lo renovamos en segundo plano a los 13m para que el usuario casi nunca vea un 401 por
+// caducidad durante el uso normal.
+const RENOVAR_A_LOS_MS = 13 * 60 * 1000;
+
 let accessToken: string | null = null;
+let renovacionProgramada: ReturnType<typeof setTimeout> | null = null;
 
 export function setAccessToken(token: string | null) {
   accessToken = token;
+  if (renovacionProgramada) {
+    clearTimeout(renovacionProgramada);
+    renovacionProgramada = null;
+  }
+  if (token) {
+    renovacionProgramada = setTimeout(() => {
+      refrescarSesion();
+    }, RENOVAR_A_LOS_MS);
+  }
 }
 
 let gestionToken: string | null = null;
@@ -27,12 +42,26 @@ interface DatosSesion {
   usuario: { id: string; nombre: string; email: string; rol: string; clinicaId: string };
 }
 
-async function refrescarSesion(): Promise<DatosSesion | null> {
-  const res = await fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' });
-  if (!res.ok) return null;
-  const data: DatosSesion = await res.json();
-  setAccessToken(data.accessToken);
-  return data;
+let refrescoEnCurso: Promise<DatosSesion | null> | null = null;
+
+/**
+ * Varias peticiones pueden recibir un 401 a la vez (o el arranque de sesión coincidir con la
+ * primera carga de una página) y llamar aquí simultáneamente; comparten la misma promesa en
+ * vez de disparar N refrescos a la vez contra /auth/refresh.
+ */
+function refrescarSesion(): Promise<DatosSesion | null> {
+  if (!refrescoEnCurso) {
+    refrescoEnCurso = (async () => {
+      const res = await fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' });
+      if (!res.ok) return null;
+      const data: DatosSesion = await res.json();
+      setAccessToken(data.accessToken);
+      return data;
+    })().finally(() => {
+      refrescoEnCurso = null;
+    });
+  }
+  return refrescoEnCurso;
 }
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}, reintentar = true): Promise<T> {
