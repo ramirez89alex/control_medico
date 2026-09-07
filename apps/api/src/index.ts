@@ -26,6 +26,11 @@ import { marketingRouter } from './routes/marketing.js';
 
 const app = express();
 
+// Railway (y la mayoría de plataformas gestionadas) terminan TLS en un proxy delante de
+// nuestro proceso; sin esto Express no vería la petición como https y algunas cabeceras
+// (X-Forwarded-*) se ignorarían.
+app.set('trust proxy', 1);
+
 app.use(cors({ origin: env.corsOrigin, credentials: true }));
 app.use(express.json({ limit: '2mb' }));
 app.use(cookieParser());
