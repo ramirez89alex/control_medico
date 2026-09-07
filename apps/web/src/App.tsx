@@ -19,6 +19,8 @@ import { Equipo } from './pages/Equipo';
 import { Gestion } from './pages/Gestion';
 import { Ajustes } from './pages/Ajustes';
 import { Facturacion } from './pages/Facturacion';
+import { Almacen } from './pages/Almacen';
+import { Compras } from './pages/Compras';
 
 function RutaPrivada({ children }: { children: JSX.Element }) {
   const { usuario, cargando } = useAuth();
@@ -66,6 +68,22 @@ function Rutas() {
           element={
             <GestionGate>
               <Facturacion />
+            </GestionGate>
+          }
+        />
+        <Route
+          path="/gestion/almacen"
+          element={
+            <GestionGate>
+              <Almacen />
+            </GestionGate>
+          }
+        />
+        <Route
+          path="/gestion/compras"
+          element={
+            <GestionGate>
+              <Compras />
             </GestionGate>
           }
         />

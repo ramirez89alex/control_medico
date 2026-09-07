@@ -50,6 +50,12 @@ enum EstadoLaboratorio {
   entregado
 }
 
+enum EstadoPedido {
+  borrador
+  enviado
+  recibido
+}
+
 enum TipoContacto {
   proveedor
   laboratorio
@@ -103,6 +109,9 @@ model Clinica {
   materiales        Material[]
   materialConsumos  MaterialConsumo[]
   facturas          Factura[]
+  proveedores       Proveedor[]
+  stock             Stock[]
+  pedidos           Pedido[]
 
   @@map("clinicas")
 }
@@ -514,4 +523,78 @@ model AccesoPaciente {
 
   @@index([pacienteId])
   @@map("accesos_paciente")
+}
+
+model Proveedor {
+  id           String   @id @default(uuid())
+  clinicaId    String   @map("clinica_id")
+  clinica      Clinica  @relation(fields: [clinicaId], references: [id])
+  nombre       String
+  contacto     String?
+  diasEntrega  Int      @default(3) @map("dias_entrega")
+  pedidoMinimo Float    @default(0) @map("pedido_minimo")
+  createdAt    DateTime @default(now())
+
+  stock   Stock[]
+  pedidos Pedido[]
+
+  @@unique([clinicaId, nombre])
+  @@map("proveedores")
+}
+
+/// Almacén: una referencia de material con mínimo/objetivo de stock de seguridad y un
+/// conteo en curso (`contado`). Sustituye a `Material` (consumo simple del paciente) para
+/// las clínicas que activan Compras y Almacén; ambos modelos conviven — `Material` sigue
+/// usándose desde la ficha del paciente.
+model Stock {
+  id           String     @id @default(uuid())
+  clinicaId    String     @map("clinica_id")
+  clinica      Clinica    @relation(fields: [clinicaId], references: [id])
+  nombre       String
+  departamento String     @default("Sin departamento")
+  proveedorId  String?    @map("proveedor_id")
+  proveedor    Proveedor? @relation(fields: [proveedorId], references: [id])
+  diaEntrega   String?    @map("dia_entrega")
+  cantidad     Float      @default(0)
+  contado      Float?
+  minimo       Float      @default(0)
+  objetivo     Float      @default(0)
+  unidad       String     @default("ud")
+  coste        Float      @default(0)
+  /// Histórico de precios recibidos: [{ fecha, precio, cantidad, proveedor }]
+  historial    Json       @default("[]")
+  orden        Int        @default(0)
+  activo       Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+
+  @@index([clinicaId])
+  @@index([clinicaId, departamento])
+  @@map("stock")
+}
+
+model Pedido {
+  id              String       @id @default(uuid())
+  clinicaId       String       @map("clinica_id")
+  clinica         Clinica      @relation(fields: [clinicaId], references: [id])
+  proveedorId     String       @map("proveedor_id")
+  proveedor       Proveedor    @relation(fields: [proveedorId], references: [id])
+  fecha           DateTime     @default(now())
+  previsto        DateTime?
+  estado          EstadoPedido @default(borrador)
+  nota            String?
+  /// [{ stockId, nombre, cantidad, precio }]
+  lineas          Json
+  recibidoFecha   DateTime?    @map("recibido_fecha")
+  albaranNumero   String?      @map("albaran_numero")
+  albaranFecha    DateTime?    @map("albaran_fecha")
+  facturaNumero   String?      @map("factura_numero")
+  facturaFecha    DateTime?    @map("factura_fecha")
+  facturaImporte  Float?       @map("factura_importe")
+  facturaVence    DateTime?    @map("factura_vence")
+  facturaPagada   Boolean      @default(false) @map("factura_pagada")
+  createdAt       DateTime     @default(now())
+  deletedAt       DateTime?    @map("deleted_at")
+
+  @@index([clinicaId, estado])
+  @@map("pedidos")
 }

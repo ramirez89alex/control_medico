@@ -49,3 +49,10 @@ export interface SaldoPaciente {
   margen: number;
   nCob: number;
 }
+
+export interface StockItem {
+  cantidad: number;
+  contado?: number | null;
+  minimo: number;
+  objetivo: number;
+}

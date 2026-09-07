@@ -4,6 +4,7 @@ import type {
   HorarioSemana,
   LineaPresupuesto,
   SaldoPaciente,
+  StockItem,
 } from './types.js';
 
 /**
@@ -106,4 +107,21 @@ export function huecosLibres(
     }
   }
   return out;
+}
+
+/** Cantidad "real" de una referencia de almacén: el conteo en curso si lo hay, si no el stock guardado. Portado de `hay()`. */
+export function stockHay(s: StockItem): number {
+  return s.contado != null ? s.contado : s.cantidad;
+}
+
+/**
+ * Unidades a pedir de una referencia: si no se ha contado nunca y no hay stock, nada que
+ * calcular; si lo que hay supera el mínimo de seguridad, nada que pedir; si no, hasta el
+ * objetivo. Portado de `aPedir()` (~línea 1833 del HTML original).
+ */
+export function stockAPedir(s: StockItem): number {
+  if (s.contado == null && !s.cantidad) return 0;
+  const h = stockHay(s);
+  if (h > s.minimo) return 0;
+  return Math.max(0, Math.round(s.objetivo - h));
 }
