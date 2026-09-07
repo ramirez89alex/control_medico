@@ -1,5 +1,5 @@
 import { CSSProperties, FormEvent, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { hoyISO, sumarDiasISO } from '@powerdent/shared';
 import { api, ApiError } from '../lib/api';
 import { Modal } from '../components/Modal';
@@ -22,9 +22,24 @@ interface PendienteVoz {
   hora: string;
 }
 
+type AccionVoz =
+  | 'agendar'
+  | 'mover_cita'
+  | 'disponibilidad'
+  | 'confirmar_pendientes'
+  | 'pedir_confirmacion'
+  | 'crear_paciente'
+  | 'abrir_paciente'
+  | 'crear_presupuesto'
+  | 'registrar_cobro'
+  | 'generar_acceso'
+  | 'registrar_historia'
+  | 'actualizar_odontograma'
+  | 'otro';
+
 interface ResultadoVoz {
   texto: string;
-  accion: 'agendar' | 'mover_cita' | 'disponibilidad' | 'confirmar_pendientes' | 'pedir_confirmacion' | 'otro';
+  accion: AccionVoz;
   paciente: string | null;
   candidatos: CandidatoVoz[];
   dentista: EntidadVoz | null;
@@ -39,6 +54,12 @@ interface ResultadoVoz {
   avisos: string[];
   pendientes: PendienteVoz[];
   pacienteContacto: { nombre: string; apellidos: string; telefono: string | null } | null;
+  pacienteCreado: CandidatoVoz | null;
+  pacienteAbrir: CandidatoVoz | null;
+  cobroRegistrado: { id: string; importe: number; forma: string; paciente: string } | null;
+  accesoUrl: string | null;
+  historiaRegistrada: { id: string; acto: string; paciente: string } | null;
+  odontogramaActualizado: { pieza: string; estado: string; paciente: string } | null;
 }
 
 interface Paciente {
@@ -361,8 +382,68 @@ export function Agenda() {
       hablar(`Cita de ${nombre} el ${fechaHablada(r.fecha || hoyISO())} a ${horaHablada(r.hora || '')}. Pulsa el botón para abrir WhatsApp y pedir la confirmación.`);
       return;
     }
+    if (r.accion === 'crear_paciente') {
+      if (r.pacienteCreado) {
+        hablar(`Paciente creado: ${r.pacienteCreado.nombre} ${r.pacienteCreado.apellidos}.${r.avisos.length ? ' ' + r.avisos.join(' ') : ''}`);
+      } else {
+        hablar(r.avisos.join(' ') || 'No he podido crear el paciente.');
+      }
+      return;
+    }
+    if (r.accion === 'abrir_paciente') {
+      if (r.pacienteAbrir) {
+        hablar(`Abriendo la ficha de ${r.pacienteAbrir.nombre} ${r.pacienteAbrir.apellidos}.`);
+        navigate(`/pacientes/${r.pacienteAbrir.id}`);
+      } else {
+        hablar(r.avisos.join(' ') || 'No he encontrado a ese paciente.');
+      }
+      return;
+    }
+    if (r.accion === 'crear_presupuesto') {
+      if (r.pacienteAbrir) {
+        hablar(`Abriendo presupuestos para ${r.pacienteAbrir.nombre} ${r.pacienteAbrir.apellidos}.`);
+        navigate(`/presupuestos?paciente=${r.pacienteAbrir.id}`);
+      } else {
+        hablar(r.avisos.join(' ') || 'No he encontrado a ese paciente.');
+      }
+      return;
+    }
+    if (r.accion === 'registrar_cobro') {
+      if (r.cobroRegistrado) {
+        hablar(`Cobro de ${r.cobroRegistrado.importe} euros registrado para ${r.cobroRegistrado.paciente}.`);
+      } else {
+        hablar(r.avisos.join(' ') || 'No he podido registrar el cobro.');
+      }
+      return;
+    }
+    if (r.accion === 'generar_acceso') {
+      if (r.accesoUrl && r.pacienteContacto) {
+        hablar(`Acceso generado para ${r.pacienteContacto.nombre} ${r.pacienteContacto.apellidos}. Pulsa el botón en pantalla para copiarlo o enviarlo.`);
+      } else {
+        hablar(r.avisos.join(' ') || 'No he podido generar el acceso.');
+      }
+      return;
+    }
+    if (r.accion === 'registrar_historia') {
+      if (r.historiaRegistrada) {
+        hablar(`Anotado en la historia de ${r.historiaRegistrada.paciente}: ${r.historiaRegistrada.acto}.`);
+      } else {
+        hablar(r.avisos.join(' ') || 'No he podido registrar la nota.');
+      }
+      return;
+    }
+    if (r.accion === 'actualizar_odontograma') {
+      if (r.odontogramaActualizado) {
+        hablar(`Pieza ${r.odontogramaActualizado.pieza} marcada como ${r.odontogramaActualizado.estado} en el odontograma de ${r.odontogramaActualizado.paciente}.`);
+      } else {
+        hablar(r.avisos.join(' ') || 'No he podido actualizar el odontograma.');
+      }
+      return;
+    }
     if (r.accion === 'otro') {
-      hablar('No he entendido esa orden. Puedes pedirme que agende una cita, cambiar una existente, pedir confirmación de una cita, preguntarme por los huecos libres, o por las citas pendientes de confirmar.');
+      hablar(
+        'No he entendido esa orden. Puedo agendar o cambiar citas, decirte la disponibilidad, pedir confirmación, crear o abrir la ficha de un paciente, preparar un presupuesto, registrar un cobro, generar el acceso al portal, anotar en la historia clínica, o marcar el odontograma.',
+      );
       return;
     }
     if (r.accion === 'mover_cita') {
@@ -738,11 +819,174 @@ export function Agenda() {
             )}
           </div>
         )}
+        {vozResultado && vozResultado.accion === 'crear_paciente' && (
+          <div style={{ marginTop: 10, borderTop: '1px solid var(--linea)', paddingTop: 10 }}>
+            <p className="mini">Escuché: “{vozResultado.texto}”</p>
+            {vozResultado.avisos.map((a, i) => (
+              <p className="mini" key={i} style={{ color: 'var(--tenue)' }}>
+                {a}
+              </p>
+            ))}
+            {vozResultado.pacienteCreado && (
+              <p style={{ marginTop: 8 }}>
+                <span className="tag ok">Creado</span>{' '}
+                <Link to={`/pacientes/${vozResultado.pacienteCreado.id}`}>
+                  {vozResultado.pacienteCreado.nombre} {vozResultado.pacienteCreado.apellidos}
+                </Link>
+              </p>
+            )}
+            <div className="fila" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
+              <button type="button" className="btn gh" onClick={() => setVozResultado(null)}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        )}
+        {vozResultado && (vozResultado.accion === 'abrir_paciente' || vozResultado.accion === 'crear_presupuesto') && (
+          <div style={{ marginTop: 10, borderTop: '1px solid var(--linea)', paddingTop: 10 }}>
+            <p className="mini">Escuché: “{vozResultado.texto}”</p>
+            {vozResultado.avisos.map((a, i) => (
+              <p className="mini" key={i} style={{ color: 'var(--tenue)' }}>
+                {a}
+              </p>
+            ))}
+            {vozResultado.candidatos.length > 1 && (
+              <table style={{ marginTop: 8 }}>
+                <tbody>
+                  {vozResultado.candidatos.map((c) => (
+                    <tr key={c.id}>
+                      <td>
+                        <Link to={vozResultado.accion === 'crear_presupuesto' ? `/presupuestos?paciente=${c.id}` : `/pacientes/${c.id}`}>
+                          {c.nombre} {c.apellidos}
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {vozResultado.pacienteAbrir && (
+              <p style={{ marginTop: 8 }}>
+                Abriendo la ficha de{' '}
+                <Link to={vozResultado.accion === 'crear_presupuesto' ? `/presupuestos?paciente=${vozResultado.pacienteAbrir.id}` : `/pacientes/${vozResultado.pacienteAbrir.id}`}>
+                  {vozResultado.pacienteAbrir.nombre} {vozResultado.pacienteAbrir.apellidos}
+                </Link>
+                …
+              </p>
+            )}
+            <div className="fila" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
+              <button type="button" className="btn gh" onClick={() => setVozResultado(null)}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        )}
+        {vozResultado && vozResultado.accion === 'registrar_cobro' && (
+          <div style={{ marginTop: 10, borderTop: '1px solid var(--linea)', paddingTop: 10 }}>
+            <p className="mini">Escuché: “{vozResultado.texto}”</p>
+            {vozResultado.avisos.map((a, i) => (
+              <p className="mini" key={i} style={{ color: 'var(--tenue)' }}>
+                {a}
+              </p>
+            ))}
+            {vozResultado.cobroRegistrado && (
+              <p style={{ marginTop: 8 }}>
+                <span className="tag ok">Registrado</span> {vozResultado.cobroRegistrado.importe.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })} ·{' '}
+                {vozResultado.cobroRegistrado.paciente} · {vozResultado.cobroRegistrado.forma}
+              </p>
+            )}
+            <div className="fila" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
+              <button type="button" className="btn gh" onClick={() => setVozResultado(null)}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        )}
+        {vozResultado && vozResultado.accion === 'generar_acceso' && (
+          <div style={{ marginTop: 10, borderTop: '1px solid var(--linea)', paddingTop: 10 }}>
+            <p className="mini">Escuché: “{vozResultado.texto}”</p>
+            {vozResultado.avisos.map((a, i) => (
+              <p className="mini" key={i} style={{ color: 'var(--tenue)' }}>
+                {a}
+              </p>
+            ))}
+            {vozResultado.accesoUrl && (
+              <>
+                <div className="f" style={{ marginTop: 8 }}>
+                  <input readOnly value={vozResultado.accesoUrl} onFocus={(e) => e.target.select()} />
+                </div>
+                <div className="fila" style={{ marginTop: 6 }}>
+                  <button type="button" className="btn gh sm" onClick={() => navigator.clipboard?.writeText(vozResultado.accesoUrl || '')}>
+                    Copiar enlace
+                  </button>
+                  {vozResultado.pacienteContacto?.telefono && (
+                    <a
+                      className="btn pri sm"
+                      style={{ textDecoration: 'none' }}
+                      target="_blank"
+                      rel="noreferrer"
+                      href={`https://wa.me/${vozResultado.pacienteContacto.telefono.replace(/[^\d]/g, '')}?text=${encodeURIComponent(`Aquí tienes tu acceso: ${vozResultado.accesoUrl}`)}`}
+                    >
+                      Enviar por WhatsApp
+                    </a>
+                  )}
+                </div>
+              </>
+            )}
+            <div className="fila" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
+              <button type="button" className="btn gh" onClick={() => setVozResultado(null)}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        )}
+        {vozResultado && vozResultado.accion === 'registrar_historia' && (
+          <div style={{ marginTop: 10, borderTop: '1px solid var(--linea)', paddingTop: 10 }}>
+            <p className="mini">Escuché: “{vozResultado.texto}”</p>
+            {vozResultado.avisos.map((a, i) => (
+              <p className="mini" key={i} style={{ color: 'var(--tenue)' }}>
+                {a}
+              </p>
+            ))}
+            {vozResultado.historiaRegistrada && (
+              <p style={{ marginTop: 8 }}>
+                <span className="tag ok">Anotado</span> {vozResultado.historiaRegistrada.acto} · {vozResultado.historiaRegistrada.paciente}
+              </p>
+            )}
+            <div className="fila" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
+              <button type="button" className="btn gh" onClick={() => setVozResultado(null)}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        )}
+        {vozResultado && vozResultado.accion === 'actualizar_odontograma' && (
+          <div style={{ marginTop: 10, borderTop: '1px solid var(--linea)', paddingTop: 10 }}>
+            <p className="mini">Escuché: “{vozResultado.texto}”</p>
+            {vozResultado.avisos.map((a, i) => (
+              <p className="mini" key={i} style={{ color: 'var(--tenue)' }}>
+                {a}
+              </p>
+            ))}
+            {vozResultado.odontogramaActualizado && (
+              <p style={{ marginTop: 8 }}>
+                <span className="tag ok">Actualizado</span> pieza {vozResultado.odontogramaActualizado.pieza} → {vozResultado.odontogramaActualizado.estado} ·{' '}
+                {vozResultado.odontogramaActualizado.paciente}
+              </p>
+            )}
+            <div className="fila" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
+              <button type="button" className="btn gh" onClick={() => setVozResultado(null)}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        )}
         {vozResultado && vozResultado.accion === 'otro' && (
           <div style={{ marginTop: 10, borderTop: '1px solid var(--linea)', paddingTop: 10 }}>
             <p className="mini">Escuché: “{vozResultado.texto}”</p>
             <p className="mini" style={{ marginTop: 6 }}>
-              No he entendido esa orden. Puedes pedirme que agende una cita o preguntarme por los huecos libres.
+              No he entendido esa orden. Puedo agendar/cambiar citas, decir la disponibilidad, pedir confirmación, crear o abrir un paciente,
+              preparar un presupuesto, registrar un cobro, generar el acceso al portal, anotar en la historia clínica, o marcar el odontograma.
             </p>
             <div className="fila" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
               <button type="button" className="btn gh" onClick={() => setVozResultado(null)}>
