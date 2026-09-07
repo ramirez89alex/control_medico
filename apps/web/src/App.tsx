@@ -18,6 +18,7 @@ import { MiPortal } from './pages/MiPortal';
 import { Equipo } from './pages/Equipo';
 import { Gestion } from './pages/Gestion';
 import { Ajustes } from './pages/Ajustes';
+import { Facturacion } from './pages/Facturacion';
 
 function RutaPrivada({ children }: { children: JSX.Element }) {
   const { usuario, cargando } = useAuth();
@@ -57,6 +58,14 @@ function Rutas() {
           element={
             <GestionGate>
               <Ajustes />
+            </GestionGate>
+          }
+        />
+        <Route
+          path="/gestion/facturacion"
+          element={
+            <GestionGate>
+              <Facturacion />
             </GestionGate>
           }
         />

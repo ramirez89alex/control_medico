@@ -1,4 +1,5 @@
 import { ClinicaLegal, CONSENTIMIENTOS, textoLegal } from '../lib/legal';
+import { DocCabecera } from './DocCabecera';
 
 interface PacienteDoc {
   nombre: string;
@@ -28,27 +29,13 @@ interface Props {
   consentimiento: ConsentimientoDoc;
 }
 
-function hoyLargo() {
-  return new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
-}
-
 export function ConsentimientoDocumento({ clinica, paciente, consentimiento }: Props) {
   const nacimiento = paciente.nacimiento ? new Date(paciente.nacimiento).toLocaleDateString('es-ES') : '—';
   const contacto = [paciente.telefono, paciente.email].filter(Boolean).join(' · ') || '—';
 
   return (
     <div className="doc">
-      <div className="cab">
-        <div>
-          <h2>{clinica.nombre}</h2>
-          <div className="mini">
-            {clinica.direccion ? `${clinica.direccion}, ${clinica.cp || ''} ${clinica.ciudad || ''}` : ''}
-            {clinica.nif ? ` · NIF ${clinica.nif}` : ''}
-          </div>
-          <div className="mini">{clinica.email || ''}</div>
-        </div>
-        <div className="mini">{hoyLargo()}</div>
-      </div>
+      <DocCabecera clinica={clinica} />
 
       <h2>Consentimiento informado</h2>
 

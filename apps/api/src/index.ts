@@ -18,6 +18,7 @@ import { equipoRouter } from './routes/equipo.js';
 import { vozRouter } from './routes/voz.js';
 import { materialesRouter } from './routes/materiales.js';
 import { gestionRouter } from './routes/gestion.js';
+import { facturacionRouter } from './routes/facturacion.js';
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use('/equipo', equipoRouter);
 app.use('/voz', vozRouter);
 app.use('/materiales', materialesRouter);
 app.use('/gestion', gestionRouter);
+app.use('/facturacion', facturacionRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);

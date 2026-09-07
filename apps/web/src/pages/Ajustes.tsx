@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { financiacion } from '@powerdent/shared';
 import { api } from '../lib/api';
+import { subirArchivo } from '../lib/archivos';
+import { COLUMNAS_FACTURA, type ColumnaFactura } from '../components/FacturaDocumento';
 
 interface Clinica {
   nombre: string;
@@ -16,6 +18,11 @@ interface Clinica {
   iva: number;
   finCuotas: number;
   finTIN: number;
+  serie: string;
+  logoArchivoId: string | null;
+  logoUrl: string | null;
+  facturaPie: string | null;
+  facturaColumnas: ColumnaFactura[];
   banco: string | null;
   pasarela: string | null;
   iban: string | null;
@@ -47,6 +54,7 @@ export function Ajustes() {
   const [tarifario, setTarifario] = useState<ItemTarifario[]>([]);
   const [q, setQ] = useState('');
   const [familia, setFamilia] = useState('');
+  const [subiendoLogo, setSubiendoLogo] = useState(false);
 
   useEffect(() => {
     api.get<Clinica>('/catalogos/clinica').then(setClinica);
@@ -99,6 +107,32 @@ export function Ajustes() {
     if (!confirm('¿Eliminar este código del tarifario?')) return;
     await api.del(`/catalogos/tarifario/${id}`);
     setTarifario((ts) => ts.filter((t) => t.id !== id));
+  }
+
+  async function subirLogo(file: File) {
+    setSubiendoLogo(true);
+    try {
+      const archivo = await subirArchivo(file, file.name);
+      const actualizada = await api.put<Clinica>('/catalogos/clinica', { logoArchivoId: archivo.id });
+      setClinica(actualizada);
+    } finally {
+      setSubiendoLogo(false);
+    }
+  }
+
+  async function quitarLogo() {
+    const actualizada = await api.put<Clinica>('/catalogos/clinica', { logoArchivoId: null });
+    setClinica(actualizada);
+  }
+
+  async function moverColumna(indice: number, direccion: -1 | 1) {
+    if (!clinica) return;
+    const destino = indice + direccion;
+    if (destino < 0 || destino >= clinica.facturaColumnas.length) return;
+    const columnas = [...clinica.facturaColumnas];
+    [columnas[indice], columnas[destino]] = [columnas[destino], columnas[indice]];
+    setClinica({ ...clinica, facturaColumnas: columnas });
+    await api.put('/catalogos/clinica', { facturaColumnas: columnas });
   }
 
   const familias = useMemo(() => [...new Set(tarifario.map((t) => t.familia || 'Otros'))].sort(), [tarifario]);
@@ -169,9 +203,19 @@ export function Ajustes() {
               <input defaultValue={clinica.dpd || ''} onBlur={(e) => guardarClinica('dpd', e.target.value)} />
             </div>
           </div>
-          <div className="f">
-            <label>IVA aplicado (%) — sanidad exenta habitualmente</label>
-            <input type="number" defaultValue={clinica.iva} onBlur={(e) => guardarClinica('iva', Number(e.target.value) || 0)} />
+          <div className="grid g2">
+            <div className="f">
+              <label>IVA aplicado (%) — sanidad exenta habitualmente</label>
+              <input type="number" defaultValue={clinica.iva} onBlur={(e) => guardarClinica('iva', Number(e.target.value) || 0)} />
+            </div>
+            <div className="f">
+              <label>Serie de facturación</label>
+              <input
+                maxLength={4}
+                defaultValue={clinica.serie}
+                onBlur={(e) => guardarClinica('serie', e.target.value || 'F')}
+              />
+            </div>
           </div>
         </div>
 
@@ -218,6 +262,76 @@ export function Ajustes() {
             <div>
               {ejemplo.n} × {eur(ejemplo.cuota)} = {eur(ejemplo.total)} (TAE {ejemplo.tae.toFixed(2).replace('.', ',')}%)
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <h3>Formato de factura</h3>
+        <hr />
+        <div className="grid g2">
+          <div>
+            <label>Logotipo</label>
+            <div className="fila" style={{ alignItems: 'center', marginTop: 6 }}>
+              {clinica.logoUrl && (
+                <img src={clinica.logoUrl} alt="Logo" style={{ height: 44, border: '1px solid var(--linea)', borderRadius: 6, background: '#fff', padding: 4 }} />
+              )}
+              <label className="btn gh sm" style={{ textTransform: 'none', letterSpacing: 0, cursor: 'pointer' }}>
+                {subiendoLogo ? 'Subiendo…' : clinica.logoUrl ? 'Cambiar logo' : 'Subir logo'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  disabled={subiendoLogo}
+                  onChange={(e) => e.target.files?.[0] && subirLogo(e.target.files[0])}
+                />
+              </label>
+              {clinica.logoUrl && (
+                <button className="btn gh sm" onClick={quitarLogo}>
+                  Quitar
+                </button>
+              )}
+            </div>
+            <p className="mini" style={{ marginTop: 6 }}>
+              Aparece en la cabecera de facturas y del consentimiento firmado.
+            </p>
+          </div>
+          <div className="f">
+            <label>Pie de página de la factura</label>
+            <textarea
+              placeholder={`Por defecto: ${clinica.nombre} · NIF · Factura {numero}`}
+              defaultValue={clinica.facturaPie || ''}
+              onBlur={(e) => guardarClinica('facturaPie', e.target.value)}
+            />
+            <p className="mini">Puedes usar {'{numero}'} y {'{nombre}'}; déjalo vacío para el pie por defecto.</p>
+          </div>
+        </div>
+        <div style={{ marginTop: 10 }}>
+          <label>Orden de columnas de la tabla</label>
+          <div className="fila" style={{ flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+            {clinica.facturaColumnas.map((col, i) => (
+              <span key={col} className="tag" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                {COLUMNAS_FACTURA[col]}
+                <button
+                  className="btn gh sm"
+                  style={{ padding: '0 6px' }}
+                  disabled={i === 0}
+                  onClick={() => moverColumna(i, -1)}
+                  title="Mover a la izquierda"
+                >
+                  ←
+                </button>
+                <button
+                  className="btn gh sm"
+                  style={{ padding: '0 6px' }}
+                  disabled={i === clinica.facturaColumnas.length - 1}
+                  onClick={() => moverColumna(i, 1)}
+                  title="Mover a la derecha"
+                >
+                  →
+                </button>
+              </span>
+            ))}
           </div>
         </div>
       </div>

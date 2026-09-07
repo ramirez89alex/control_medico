@@ -18,7 +18,7 @@ portalRouter.get('/mi', async (req, res) => {
     prisma.paciente.findUniqueOrThrow({ where: { id: pacienteId } }),
     prisma.clinica.findUniqueOrThrow({
       where: { id: clinicaDe(req) },
-      select: { nombre: true, nif: true, direccion: true, cp: true, ciudad: true, email: true },
+      select: { nombre: true, nif: true, direccion: true, cp: true, ciudad: true, email: true, logoArchivoId: true },
     }),
     prisma.cita.findFirst({
       where: { pacienteId, fecha: hoyISO(), deletedAt: null },
@@ -48,6 +48,12 @@ portalRouter.get('/mi', async (req, res) => {
     if (archivo) firmaUrl = await presignDescarga(archivo.objectKey);
   }
 
+  let logoUrl: string | null = null;
+  if (clinica.logoArchivoId) {
+    const archivo = await prisma.archivo.findFirst({ where: { id: clinica.logoArchivoId, clinicaId: clinicaDe(req) } });
+    if (archivo) logoUrl = await presignDescarga(archivo.objectKey);
+  }
+
   res.json({
     paciente: {
       id: paciente.id,
@@ -62,7 +68,7 @@ portalRouter.get('/mi', async (req, res) => {
       medicacion: paciente.medicacion,
       antecedentes: paciente.antecedentes,
     },
-    clinica,
+    clinica: { ...clinica, logoUrl },
     citaHoy,
     proximaCita,
     historia,

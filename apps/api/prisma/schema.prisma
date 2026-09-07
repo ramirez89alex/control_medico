@@ -75,6 +75,10 @@ model Clinica {
   horario     Json // { "1": {"abre":"09:00","cierra":"20:00"}, "0": null, ... }
   finCuotas   Int      @default(12)
   finTIN      Float    @default(15)
+  serie       String   @default("F")
+  logoArchivoId String? @map("logo_archivo_id")
+  facturaPie      String?  @map("factura_pie")
+  facturaColumnas String[] @default(["concepto", "cantidad", "precio", "importe"]) @map("factura_columnas")
   banco       String?
   pasarela    String?
   iban        String?
@@ -98,6 +102,7 @@ model Clinica {
   accesosPaciente   AccesoPaciente[]
   materiales        Material[]
   materialConsumos  MaterialConsumo[]
+  facturas          Factura[]
 
   @@map("clinicas")
 }
@@ -183,6 +188,7 @@ model Paciente {
   laboratorio     Laboratorio[]
   accesos         AccesoPaciente[]
   materialConsumos MaterialConsumo[]
+  facturas        Factura[]
 
   @@index([clinicaId])
   @@index([clinicaId, deletedAt])
@@ -377,9 +383,37 @@ model Cobro {
   createdAt     DateTime     @default(now())
   deletedAt     DateTime?    @map("deleted_at")
 
+  factura Factura?
+
   @@index([clinicaId, pacienteId])
   @@index([clinicaId, fecha])
   @@map("cobros")
+}
+
+model Factura {
+  id            String       @id @default(uuid())
+  clinicaId     String       @map("clinica_id")
+  clinica       Clinica      @relation(fields: [clinicaId], references: [id])
+  pacienteId    String       @map("paciente_id")
+  paciente      Paciente     @relation(fields: [pacienteId], references: [id])
+  cobroId       String?      @unique @map("cobro_id")
+  cobro         Cobro?       @relation(fields: [cobroId], references: [id])
+  numero        String
+  anio          Int
+  fecha         DateTime     @default(now())
+  lineas        Json // [{ nombre, cantidad, pvp }]
+  base          Float
+  iva           Float        @default(0)
+  exenta        Boolean      @default(true)
+  total         Float
+  conciliada    Boolean      @default(false)
+  notas         String?
+  createdAt     DateTime     @default(now())
+  deletedAt     DateTime?    @map("deleted_at")
+
+  @@unique([clinicaId, numero])
+  @@index([clinicaId, fecha])
+  @@map("facturas")
 }
 
 model Laboratorio {

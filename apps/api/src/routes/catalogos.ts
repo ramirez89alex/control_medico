@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { clinicaDe, requireAuth, requireGestion, requireRol } from '../middleware/auth.js';
+import { presignDescarga } from '../lib/s3.js';
 
 export const catalogosRouter = Router();
 catalogosRouter.use(requireAuth, requireRol('admin', 'dentista', 'recepcion'));
@@ -20,17 +21,27 @@ const clinicaSelect = {
   iva: true,
   finCuotas: true,
   finTIN: true,
+  serie: true,
+  logoArchivoId: true,
+  facturaPie: true,
+  facturaColumnas: true,
   banco: true,
   pasarela: true,
   iban: true,
 } as const;
 
+async function clinicaConLogo(clinicaId: string) {
+  const clinica = await prisma.clinica.findUniqueOrThrow({ where: { id: clinicaId }, select: clinicaSelect });
+  let logoUrl: string | null = null;
+  if (clinica.logoArchivoId) {
+    const archivo = await prisma.archivo.findFirst({ where: { id: clinica.logoArchivoId, clinicaId } });
+    if (archivo) logoUrl = await presignDescarga(archivo.objectKey);
+  }
+  return { ...clinica, logoUrl };
+}
+
 catalogosRouter.get('/clinica', async (req, res) => {
-  const clinica = await prisma.clinica.findUniqueOrThrow({
-    where: { id: clinicaDe(req) },
-    select: clinicaSelect,
-  });
-  res.json(clinica);
+  res.json(await clinicaConLogo(clinicaDe(req)));
 });
 
 const clinicaUpdateSchema = z.object({
@@ -47,6 +58,10 @@ const clinicaUpdateSchema = z.object({
   iva: z.number().min(0).optional(),
   finCuotas: z.number().int().positive().optional(),
   finTIN: z.number().min(0).optional(),
+  serie: z.string().min(1).max(4).optional(),
+  logoArchivoId: z.string().uuid().optional().nullable(),
+  facturaPie: z.string().optional().nullable(),
+  facturaColumnas: z.array(z.enum(['concepto', 'cantidad', 'precio', 'importe'])).length(4).optional(),
   banco: z.string().optional().nullable(),
   pasarela: z.string().optional().nullable(),
   iban: z.string().optional().nullable(),
@@ -55,8 +70,8 @@ const clinicaUpdateSchema = z.object({
 catalogosRouter.put('/clinica', requireGestion, async (req, res) => {
   const parsed = clinicaUpdateSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-  const clinica = await prisma.clinica.update({ where: { id: clinicaDe(req) }, data: parsed.data, select: clinicaSelect });
-  res.json(clinica);
+  await prisma.clinica.update({ where: { id: clinicaDe(req) }, data: parsed.data });
+  res.json(await clinicaConLogo(clinicaDe(req)));
 });
 
 catalogosRouter.get('/dentistas', async (req, res) => {

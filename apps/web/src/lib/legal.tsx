@@ -5,6 +5,7 @@ export interface ClinicaLegal {
   cp: string | null;
   ciudad: string | null;
   email: string | null;
+  logoUrl?: string | null;
 }
 
 export const CONSENTIMIENTOS = [
