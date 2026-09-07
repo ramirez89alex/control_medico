@@ -3,7 +3,10 @@ services:
     name: powerdent-api
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build -w packages/shared && npm run build -w apps/api
+    # --include=dev: NODE_ENV=production (necesario en runtime, más abajo) hace que "npm
+    # install" omita las devDependencies por defecto — pero TypeScript, @types/* y prisma
+    # están ahí, y el build los necesita.
+    buildCommand: npm install --include=dev && npm run build -w packages/shared && npm run build -w apps/api
     startCommand: node apps/api/dist/src/index.js
     envVars:
       - key: NODE_ENV
