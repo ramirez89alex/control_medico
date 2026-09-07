@@ -148,6 +148,8 @@ export function Agenda() {
   const [cargando, setCargando] = useState(true);
   const [modalCita, setModalCita] = useState<Cita | 'nueva' | null>(null);
   const [recordatorios, setRecordatorios] = useState<Cita[]>([]);
+  const [labVencido, setLabVencido] = useState(0);
+  const [cobradoMes, setCobradoMes] = useState(0);
 
   const [vozEscuchando, setVozEscuchando] = useState(false);
   const [vozParcial, setVozParcial] = useState('');
@@ -203,6 +205,14 @@ export function Agenda() {
     api.get<Dentista[]>('/catalogos/dentistas').then(setDentistas);
     api.get<Gabinete[]>('/catalogos/gabinetes').then(setGabinetes);
     cargarRecordatorios();
+
+    api.get<Array<{ estado: string; fechaPrevista: string }>>('/laboratorio').then((trabajos) => {
+      const hoy = hoyISO();
+      setLabVencido(trabajos.filter((t) => t.estado !== 'entregado' && t.fechaPrevista.slice(0, 10) < hoy).length);
+    });
+    api.get<Array<{ importe: number }>>(`/cobros?mes=${hoyISO().slice(0, 7)}`).then((cobros) => {
+      setCobradoMes(cobros.reduce((a, c) => a + c.importe, 0));
+    });
   }, []);
 
   async function marcarEstado(id: string, estado: string) {
@@ -586,11 +596,11 @@ export function Agenda() {
         </div>
         <div className="kpi">
           <span>Lab. vencido</span>
-          <b className="mini">— (fase siguiente)</b>
+          <b style={{ color: labVencido ? 'var(--rojo)' : 'inherit' }}>{labVencido}</b>
         </div>
         <div className="kpi">
           <span>Cobrado este mes</span>
-          <b className="mini">— (fase siguiente)</b>
+          <b>{cobradoMes.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</b>
         </div>
       </div>
 
