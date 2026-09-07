@@ -22,6 +22,7 @@ import { Facturacion } from './pages/Facturacion';
 import { Almacen } from './pages/Almacen';
 import { Compras } from './pages/Compras';
 import { Banco } from './pages/Banco';
+import { Marketing } from './pages/Marketing';
 
 function RutaPrivada({ children }: { children: JSX.Element }) {
   const { usuario, cargando } = useAuth();
@@ -93,6 +94,14 @@ function Rutas() {
           element={
             <GestionGate>
               <Banco />
+            </GestionGate>
+          }
+        />
+        <Route
+          path="/gestion/marketing"
+          element={
+            <GestionGate>
+              <Marketing />
             </GestionGate>
           }
         />

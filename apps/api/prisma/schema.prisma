@@ -63,6 +63,20 @@ enum TipoContacto {
   otro
 }
 
+enum EstadoCampana {
+  preparada
+  en_curso
+  terminada
+}
+
+enum EstadoIdea {
+  nueva
+  en_estudio
+  en_marcha
+  descartada
+  hecha
+}
+
 model Clinica {
   id          String   @id @default(uuid())
   nombre      String
@@ -89,6 +103,7 @@ model Clinica {
   pasarela    String?
   iban        String?
   gestionCodigoHash String? @map("gestion_codigo_hash")
+  mesesRevision Int    @default(6) @map("meses_revision")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -113,6 +128,8 @@ model Clinica {
   stock             Stock[]
   pedidos           Pedido[]
   movimientosBanco  MovimientoBanco[]
+  campanas          Campana[]
+  ideas             Idea[]
 
   @@map("clinicas")
 }
@@ -621,4 +638,43 @@ model MovimientoBanco {
 
   @@index([clinicaId, fecha])
   @@map("movimientos_banco")
+}
+
+model Campana {
+  id         String        @id @default(uuid())
+  clinicaId  String        @map("clinica_id")
+  clinica    Clinica       @relation(fields: [clinicaId], references: [id])
+  nombre     String
+  canal      String        @default("Email")
+  fecha      DateTime      @default(now())
+  publico    String        @default("general") // 'revision' | 'general' | clave de plantilla
+  asunto     String?
+  cuerpo     String?
+  estado     EstadoCampana @default(preparada)
+  enviados   Int           @default(0)
+  respuestas Int           @default(0)
+  citas      Int           @default(0)
+  coste      Float         @default(0)
+  notas      String?
+  createdAt  DateTime      @default(now())
+  deletedAt  DateTime?     @map("deleted_at")
+
+  @@index([clinicaId, fecha])
+  @@map("campanas")
+}
+
+model Idea {
+  id        String     @id @default(uuid())
+  clinicaId String     @map("clinica_id")
+  clinica   Clinica    @relation(fields: [clinicaId], references: [id])
+  texto     String
+  autor     String?
+  estado    EstadoIdea @default(nueva)
+  votos     Int        @default(0)
+  fecha     DateTime   @default(now())
+  createdAt DateTime   @default(now())
+  deletedAt DateTime?  @map("deleted_at")
+
+  @@index([clinicaId])
+  @@map("ideas")
 }

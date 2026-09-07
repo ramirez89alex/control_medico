@@ -22,6 +22,7 @@ import { facturacionRouter } from './routes/facturacion.js';
 import { almacenRouter } from './routes/almacen.js';
 import { comprasRouter } from './routes/compras.js';
 import { bancoRouter } from './routes/banco.js';
+import { marketingRouter } from './routes/marketing.js';
 
 const app = express();
 
@@ -50,6 +51,7 @@ app.use('/facturacion', facturacionRouter);
 app.use('/almacen', almacenRouter);
 app.use('/compras', comprasRouter);
 app.use('/banco', bancoRouter);
+app.use('/marketing', marketingRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);
