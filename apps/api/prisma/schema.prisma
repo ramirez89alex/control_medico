@@ -112,6 +112,7 @@ model Clinica {
   proveedores       Proveedor[]
   stock             Stock[]
   pedidos           Pedido[]
+  movimientosBanco  MovimientoBanco[]
 
   @@map("clinicas")
 }
@@ -389,6 +390,7 @@ model Cobro {
   tipo          TipoCobro    @default(pago)
   concepto      String?
   numero        Int
+  conciliado    Boolean      @default(false)
   createdAt     DateTime     @default(now())
   deletedAt     DateTime?    @map("deleted_at")
 
@@ -597,4 +599,26 @@ model Pedido {
 
   @@index([clinicaId, estado])
   @@map("pedidos")
+}
+
+/// Conciliación bancaria: movimientos pegados de un extracto, casados con facturas propias,
+/// cobros o pedidos a proveedor. `conciliadoTipo`/`conciliadoId` referencian sueltos (no FK)
+/// porque un movimiento puede casar con cualquiera de esos tres modelos, o con "otro"
+/// concepto sin documento (alquiler, nómina…), guardado solo como texto en `conciliadoNota`.
+model MovimientoBanco {
+  id             String    @id @default(uuid())
+  clinicaId      String    @map("clinica_id")
+  clinica        Clinica   @relation(fields: [clinicaId], references: [id])
+  fecha          DateTime
+  concepto       String
+  importe        Float
+  conciliado     Boolean   @default(false)
+  conciliadoTipo String?   @map("conciliado_tipo") // 'factura' | 'cobro' | 'pedido' | 'otro'
+  conciliadoId   String?   @map("conciliado_id")
+  conciliadoNota String?   @map("conciliado_nota")
+  createdAt      DateTime  @default(now())
+  deletedAt      DateTime? @map("deleted_at")
+
+  @@index([clinicaId, fecha])
+  @@map("movimientos_banco")
 }

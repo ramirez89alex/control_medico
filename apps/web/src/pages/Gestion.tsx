@@ -8,7 +8,7 @@ import { GestionGate } from '../components/GestionGate';
 const SECCIONES: Array<{ to: string; titulo: string; descripcion: string; disponible: boolean }> = [
   { to: '/gestion/ajustes', titulo: 'Ajustes', descripcion: 'Datos de la clínica, financiación, gabinetes y tarifario.', disponible: true },
   { to: '/gestion/facturacion', titulo: 'Facturación', descripcion: 'Facturas propias con serie y numeración correlativa desde tus cobros.', disponible: true },
-  { to: '/gestion/banco', titulo: 'Banco y OCR', descripcion: 'Conciliación del extracto y lectura de facturas por OCR.', disponible: false },
+  { to: '/gestion/banco', titulo: 'Banco', descripcion: 'Pegar extracto y conciliar contra facturas, cobros y pedidos.', disponible: true },
   { to: '/gestion/compras', titulo: 'Compras', descripcion: 'Proveedores, pedidos en tránsito, albaranes y facturas.', disponible: true },
   { to: '/gestion/almacen', titulo: 'Almacén', descripcion: 'Conteo por departamentos, stock de seguridad y pedido automático.', disponible: true },
   { to: '/gestion/marketing', titulo: 'Marketing', descripcion: 'Cumpleaños, revisiones pendientes, campañas e ideas.', disponible: false },

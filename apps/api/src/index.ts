@@ -21,6 +21,7 @@ import { gestionRouter } from './routes/gestion.js';
 import { facturacionRouter } from './routes/facturacion.js';
 import { almacenRouter } from './routes/almacen.js';
 import { comprasRouter } from './routes/compras.js';
+import { bancoRouter } from './routes/banco.js';
 
 const app = express();
 
@@ -48,6 +49,7 @@ app.use('/gestion', gestionRouter);
 app.use('/facturacion', facturacionRouter);
 app.use('/almacen', almacenRouter);
 app.use('/compras', comprasRouter);
+app.use('/banco', bancoRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);
