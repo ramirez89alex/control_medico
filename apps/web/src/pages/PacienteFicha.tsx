@@ -216,7 +216,10 @@ function AudioSesion({ archivoId }: { archivoId: string }) {
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    api.get<{ url: string }>(`/archivos/${archivoId}/descarga`).then((r) => setUrl(r.url));
+    api
+      .get<{ url: string }>(`/archivos/${archivoId}/descarga`)
+      .then((r) => setUrl(r.url))
+      .catch(() => setUrl(null));
   }, [archivoId]);
 
   if (!url) return null;
@@ -292,7 +295,10 @@ export function PacienteFicha() {
       setFirmaUrl(null);
       return;
     }
-    api.get<{ url: string }>(`/archivos/${paciente.consentFirmaArchivoId}/descarga`).then((r) => setFirmaUrl(r.url));
+    api
+      .get<{ url: string }>(`/archivos/${paciente.consentFirmaArchivoId}/descarga`)
+      .then((r) => setFirmaUrl(r.url))
+      .catch(() => setFirmaUrl(null));
   }, [paciente?.consentFirmaArchivoId]);
 
   async function guardarCampo(campo: string, valor: string | null) {
@@ -464,8 +470,12 @@ export function PacienteFicha() {
   }
 
   async function descargarArchivo(a: Archivo) {
-    const { url } = await api.get<{ url: string }>(`/archivos/${a.id}/descarga`);
-    window.open(url, '_blank');
+    try {
+      const { url } = await api.get<{ url: string }>(`/archivos/${a.id}/descarga`);
+      window.open(url, '_blank');
+    } catch {
+      alert('No se pudo abrir el archivo: puede que se haya eliminado.');
+    }
   }
 
   async function borrarArchivo(a: Archivo) {

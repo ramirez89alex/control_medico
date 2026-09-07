@@ -51,9 +51,21 @@ archivosRouter.get('/:id/descarga', async (req, res) => {
 });
 
 archivosRouter.delete('/:id', async (req, res) => {
-  const archivo = await prisma.archivo.findFirst({ where: { id: req.params.id, clinicaId: clinicaDe(req), deletedAt: null } });
+  const clinicaId = clinicaDe(req);
+  const archivo = await prisma.archivo.findFirst({ where: { id: req.params.id, clinicaId, deletedAt: null } });
   if (!archivo) return res.status(404).json({ error: 'Archivo no encontrado' });
-  await prisma.archivo.update({ where: { id: archivo.id }, data: { deletedAt: new Date() } });
-  registrarAuditoria({ clinicaId: clinicaDe(req), usuarioId: usuarioDe(req), accion: 'borrar', entidad: 'archivo', entidadId: archivo.id });
+
+  // Paciente.consentFirmaArchivoId, HistoriaClinica.audioArchivoId y Clinica.logoArchivoId
+  // referencian un Archivo sin FK real (pueden apuntar a cualquiera de los tres modelos según
+  // el caso) — al borrar hay que limpiar esas referencias sueltas o queda un enlace roto que
+  // el cliente intenta descargar después y revienta con un 404.
+  await prisma.$transaction([
+    prisma.archivo.update({ where: { id: archivo.id }, data: { deletedAt: new Date() } }),
+    prisma.paciente.updateMany({ where: { clinicaId, consentFirmaArchivoId: archivo.id }, data: { consentFirmaArchivoId: null } }),
+    prisma.historiaClinica.updateMany({ where: { clinicaId, audioArchivoId: archivo.id }, data: { audioArchivoId: null } }),
+    prisma.clinica.updateMany({ where: { id: clinicaId, logoArchivoId: archivo.id }, data: { logoArchivoId: null } }),
+  ]);
+
+  registrarAuditoria({ clinicaId, usuarioId: usuarioDe(req), accion: 'borrar', entidad: 'archivo', entidadId: archivo.id });
   res.status(204).end();
 });
