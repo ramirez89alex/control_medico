@@ -17,6 +17,7 @@ import { AccesoPaciente } from './pages/AccesoPaciente';
 import { MiPortal } from './pages/MiPortal';
 import { Equipo } from './pages/Equipo';
 import { Gestion } from './pages/Gestion';
+import { Dashboard } from './pages/Dashboard';
 import { Ajustes } from './pages/Ajustes';
 import { Facturacion } from './pages/Facturacion';
 import { Almacen } from './pages/Almacen';
@@ -57,6 +58,14 @@ function Rutas() {
         <Route path="/portal" element={<Portal />} />
         <Route path="/equipo" element={<Equipo />} />
         <Route path="/gestion" element={<Gestion />} />
+        <Route
+          path="/gestion/dashboard"
+          element={
+            <GestionGate>
+              <Dashboard />
+            </GestionGate>
+          }
+        />
         <Route
           path="/gestion/ajustes"
           element={

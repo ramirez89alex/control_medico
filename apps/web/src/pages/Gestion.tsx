@@ -6,6 +6,7 @@ import { useGestion } from '../lib/gestion-context';
 import { GestionGate } from '../components/GestionGate';
 
 const SECCIONES: Array<{ to: string; titulo: string; descripcion: string; disponible: boolean }> = [
+  { to: '/gestion/dashboard', titulo: 'Panel', descripcion: 'Visión general con gráficos: pacientes, agenda, presupuestos y cobros.', disponible: true },
   { to: '/gestion/ajustes', titulo: 'Ajustes', descripcion: 'Datos de la clínica, financiación, gabinetes y tarifario.', disponible: true },
   { to: '/gestion/facturacion', titulo: 'Facturación', descripcion: 'Facturas propias con serie y numeración correlativa desde tus cobros.', disponible: true },
   { to: '/gestion/banco', titulo: 'Banco', descripcion: 'Pegar extracto y conciliar contra facturas, cobros y pedidos.', disponible: true },
