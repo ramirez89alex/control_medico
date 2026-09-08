@@ -319,6 +319,43 @@ export function Agenda() {
         </div>
       </div>
 
+      {avisosPendientes.length > 0 && (
+        <div className="card">
+          <div className="entre">
+            <h3>Recordatorios de cita</h3>
+            <span className="tag warn">{avisosPendientes.length} por enviar</span>
+          </div>
+          <p className="mini">Semana, 3 días, 1 día y 1 hora antes — envía por WhatsApp con un toque.</p>
+          <hr />
+          <table>
+            <tbody>
+              {avisosPendientes.map((r) => (
+                <tr key={r.id}>
+                  <td className="mono" style={{ width: 96 }}>
+                    {new Date(`${r.fecha}T00:00:00`).toLocaleDateString('es-ES')}
+                    <div className="mini">{r.hora}</div>
+                  </td>
+                  <td>
+                    <b>{r.paciente ? `${r.paciente.nombre} ${r.paciente.apellidos}`.trim() : 'Paciente'}</b>
+                    <div className="mini">
+                      {r.motivo || ''} {r.paciente?.telefono ? `· ${r.paciente.telefono}` : '· sin teléfono'}
+                    </div>
+                  </td>
+                  <td style={{ width: 130 }}>
+                    <span className="tag info">{ETIQUETA_RECORDATORIO[r.tipo]}</span>
+                  </td>
+                  <td className="num" style={{ whiteSpace: 'nowrap' }}>
+                    <button className="btn pri sm" onClick={() => enviarRecordatorio(r)}>
+                      Enviar recordatorio
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {/* lista compacta: única versión visible en móvil */}
       <div className="card solo-lista">
         <div className="entre" style={{ marginBottom: 8 }}>
@@ -401,43 +438,6 @@ export function Agenda() {
           </div>
         )}
       </div>
-
-      {avisosPendientes.length > 0 && (
-        <div className="card">
-          <div className="entre">
-            <h3>Recordatorios de cita</h3>
-            <span className="tag warn">{avisosPendientes.length} por enviar</span>
-          </div>
-          <p className="mini">Semana, 3 días, 1 día y 1 hora antes — envía por WhatsApp con un toque.</p>
-          <hr />
-          <table>
-            <tbody>
-              {avisosPendientes.map((r) => (
-                <tr key={r.id}>
-                  <td className="mono" style={{ width: 96 }}>
-                    {new Date(`${r.fecha}T00:00:00`).toLocaleDateString('es-ES')}
-                    <div className="mini">{r.hora}</div>
-                  </td>
-                  <td>
-                    <b>{r.paciente ? `${r.paciente.nombre} ${r.paciente.apellidos}`.trim() : 'Paciente'}</b>
-                    <div className="mini">
-                      {r.motivo || ''} {r.paciente?.telefono ? `· ${r.paciente.telefono}` : '· sin teléfono'}
-                    </div>
-                  </td>
-                  <td style={{ width: 130 }}>
-                    <span className="tag info">{ETIQUETA_RECORDATORIO[r.tipo]}</span>
-                  </td>
-                  <td className="num" style={{ whiteSpace: 'nowrap' }}>
-                    <button className="btn pri sm" onClick={() => enviarRecordatorio(r)}>
-                      Enviar recordatorio
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
 
       {recordatorios.length > 0 && (
         <div className="card">
