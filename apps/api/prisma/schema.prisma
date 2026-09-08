@@ -44,6 +44,13 @@ enum TipoCobro {
   anticipo
 }
 
+enum EstadoEnlacePago {
+  pendiente
+  pagado
+  expirado
+  cancelado
+}
+
 enum EstadoLaboratorio {
   enviado
   recibido
@@ -130,6 +137,7 @@ model Clinica {
   movimientosBanco  MovimientoBanco[]
   campanas          Campana[]
   ideas             Idea[]
+  enlacesPago       EnlacePago[]
 
   @@map("clinicas")
 }
@@ -216,6 +224,7 @@ model Paciente {
   accesos         AccesoPaciente[]
   materialConsumos MaterialConsumo[]
   facturas        Factura[]
+  enlacesPago     EnlacePago[]
 
   @@index([clinicaId])
   @@index([clinicaId, deletedAt])
@@ -339,6 +348,7 @@ model Presupuesto {
 
   lineas LineaPresupuesto[]
   cobros Cobro[]
+  enlacesPago EnlacePago[]
 
   @@index([clinicaId, pacienteId])
   @@map("presupuestos")
@@ -414,10 +424,38 @@ model Cobro {
   deletedAt     DateTime?    @map("deleted_at")
 
   factura Factura?
+  enlacePago EnlacePago?
 
   @@index([clinicaId, pacienteId])
   @@index([clinicaId, fecha])
   @@map("cobros")
+}
+
+/// Enlace de pago online (Stripe Checkout). No es un cobro real hasta que el webhook confirma
+/// el pago — entonces se crea el Cobro correspondiente y se enlaza aquí.
+model EnlacePago {
+  id                String           @id @default(uuid())
+  clinicaId         String           @map("clinica_id")
+  clinica           Clinica          @relation(fields: [clinicaId], references: [id])
+  pacienteId        String           @map("paciente_id")
+  paciente          Paciente         @relation(fields: [pacienteId], references: [id])
+  presupuestoId     String?          @map("presupuesto_id")
+  presupuesto       Presupuesto?     @relation(fields: [presupuestoId], references: [id])
+  importe           Float
+  concepto          String?
+  stripeSessionId   String           @unique @map("stripe_session_id")
+  stripeUrl         String           @map("stripe_url")
+  estado            EstadoEnlacePago @default(pendiente)
+  cobroId           String?          @unique @map("cobro_id")
+  cobro             Cobro?           @relation(fields: [cobroId], references: [id])
+  creadoPorUsuarioId String          @map("creado_por_usuario_id")
+  createdAt         DateTime         @default(now())
+  pagadoEn          DateTime?        @map("pagado_en")
+  deletedAt         DateTime?        @map("deleted_at")
+
+  @@index([clinicaId, estado])
+  @@index([clinicaId, pacienteId])
+  @@map("enlaces_pago")
 }
 
 model Factura {

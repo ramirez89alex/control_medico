@@ -24,6 +24,7 @@ import { comprasRouter } from './routes/compras.js';
 import { bancoRouter } from './routes/banco.js';
 import { marketingRouter } from './routes/marketing.js';
 import { dashboardRouter } from './routes/dashboard.js';
+import { pagosRouter, pagosWebhookHandler, estadoPagoPublico } from './routes/pagos.js';
 
 const app = express();
 
@@ -33,6 +34,11 @@ const app = express();
 app.set('trust proxy', 1);
 
 app.use(cors({ origin: env.corsOrigin, credentials: true }));
+
+// El webhook de Stripe necesita el cuerpo en crudo para verificar la firma — tiene que
+// registrarse ANTES de express.json(), que si no ya lo habría parseado a objeto.
+app.post('/pagos/webhook', express.raw({ type: 'application/json' }), pagosWebhookHandler);
+
 app.use(express.json({ limit: '2mb' }));
 app.use(cookieParser());
 
@@ -59,6 +65,10 @@ app.use('/compras', comprasRouter);
 app.use('/banco', bancoRouter);
 app.use('/marketing', marketingRouter);
 app.use('/dashboard', dashboardRouter);
+// Registrada antes de montar pagosRouter (que exige sesión de personal) porque esta ruta
+// concreta es pública — si no, /pagos/publico/:sessionId caería dentro de su requireAuth.
+app.get('/pagos/publico/:sessionId', estadoPagoPublico);
+app.use('/pagos', pagosRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);

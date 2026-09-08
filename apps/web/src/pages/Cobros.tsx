@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../lib/api';
+import { api, ApiError } from '../lib/api';
 import { Modal } from '../components/Modal';
 
 interface Paciente {
@@ -22,6 +22,28 @@ interface Cobro {
 interface Saldo {
   paciente: Paciente;
   pendiente: number;
+}
+
+interface EnlacePago {
+  id: string;
+  importe: number;
+  concepto: string | null;
+  estado: 'pendiente' | 'pagado' | 'expirado' | 'cancelado';
+  stripeUrl: string;
+  createdAt: string;
+  paciente: Paciente;
+}
+
+const ETIQUETA_ESTADO_ENLACE: Record<EnlacePago['estado'], string> = {
+  pendiente: 'Pendiente',
+  pagado: 'Pagado',
+  expirado: 'Expirado',
+  cancelado: 'Cancelado',
+};
+
+function telWA(tel: string) {
+  const limpio = tel.replace(/[^\d]/g, '');
+  return limpio.length === 9 ? `34${limpio}` : limpio;
 }
 
 const FORMAS: Array<{ value: string; label: string }> = [
@@ -46,8 +68,11 @@ export function Cobros() {
   const [cobros, setCobros] = useState<Cobro[]>([]);
   const [saldos, setSaldos] = useState<Saldo[]>([]);
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
+  const [enlaces, setEnlaces] = useState<EnlacePago[]>([]);
   const [cargando, setCargando] = useState(true);
   const [modalAbierto, setModalAbierto] = useState<{ pacienteId?: string } | null>(null);
+  const [modalEnlace, setModalEnlace] = useState<{ pacienteId?: string } | null>(null);
+  const [generandoEnlace, setGenerandoEnlace] = useState(false);
 
   async function cargar() {
     setCargando(true);
@@ -57,8 +82,13 @@ export function Cobros() {
     setCargando(false);
   }
 
+  async function cargarEnlaces() {
+    setEnlaces(await api.get<EnlacePago[]>('/pagos/enlaces'));
+  }
+
   useEffect(() => {
     cargar();
+    cargarEnlaces();
     api.get<Paciente[]>('/pacientes').then(setPacientes);
   }, []);
 
@@ -86,6 +116,41 @@ export function Cobros() {
   const pacientePreseleccionado = modalAbierto?.pacienteId ? pacientes.find((p) => p.id === modalAbierto.pacienteId) : undefined;
   const pendientePreseleccionado = modalAbierto?.pacienteId ? saldos.find((s) => s.paciente.id === modalAbierto.pacienteId)?.pendiente || 0 : 0;
 
+  function enviarPorWhatsApp(enlace: EnlacePago, ventana: Window | null) {
+    const texto = `Hola ${enlace.paciente.nombre}, te escribimos de PowerDent.\n\nAquí tienes el enlace para pagar online${enlace.concepto ? ` (${enlace.concepto})` : ''}, ${eur(enlace.importe)}:\n${enlace.stripeUrl}\n\n¡Gracias!`;
+    const urlWA = `https://wa.me/${telWA(enlace.paciente.telefono || '')}?text=${encodeURIComponent(texto)}`;
+    if (ventana) ventana.location.href = urlWA;
+    else window.open(urlWA, '_blank');
+  }
+
+  async function generarEnlace(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    const pacienteId = String(form.get('pacienteId'));
+    const paciente = pacientes.find((p) => p.id === pacienteId);
+    const conTelefono = !!paciente?.telefono;
+    // Igual que en los recordatorios de Agenda: se abre la pestaña dentro del clic (si no el
+    // navegador la bloquea) y se rellena en cuanto Stripe nos da el enlace real.
+    const ventana = conTelefono ? window.open('', '_blank') : null;
+    setGenerandoEnlace(true);
+    try {
+      const enlace = await api.post<EnlacePago>('/pagos/enlace', {
+        pacienteId,
+        importe: Number(form.get('importe')),
+        concepto: form.get('concepto') || undefined,
+      });
+      setModalEnlace(null);
+      cargarEnlaces();
+      if (conTelefono) enviarPorWhatsApp(enlace, ventana);
+      else window.alert('Enlace generado. Este paciente no tiene teléfono guardado — cópialo desde la lista de enlaces.');
+    } catch (err) {
+      ventana?.close();
+      window.alert(err instanceof ApiError ? err.message : 'No se pudo generar el enlace de pago');
+    } finally {
+      setGenerandoEnlace(false);
+    }
+  }
+
   return (
     <div>
       <div className="topbar">
@@ -94,6 +159,9 @@ export function Cobros() {
           <p>Control de caja y saldos por paciente</p>
         </div>
         <div className="acciones">
+          <button className="btn gh" onClick={() => setModalEnlace({})}>
+            Enlace de pago
+          </button>
           <button className="btn pri" onClick={() => setModalAbierto({})}>
             Registrar cobro
           </button>
@@ -187,6 +255,87 @@ export function Cobros() {
           )}
         </div>
       </div>
+
+      {enlaces.length > 0 && (
+        <div className="card" style={{ marginTop: 14 }}>
+          <h3>Enlaces de pago</h3>
+          <p className="mini">Se cobran solos en cuanto el paciente paga — el pago aparece aquí y en Movimientos automáticamente.</p>
+          <hr />
+          <table>
+            <tbody>
+              {enlaces.map((en) => (
+                <tr key={en.id}>
+                  <td className="mono" style={{ width: 96 }}>
+                    {new Date(en.createdAt).toLocaleDateString('es-ES')}
+                  </td>
+                  <td>
+                    <b>
+                      {en.paciente.nombre} {en.paciente.apellidos}
+                    </b>
+                    <div className="mini">{en.concepto || ''}</div>
+                  </td>
+                  <td className="num">{eur(en.importe)}</td>
+                  <td style={{ width: 110 }}>
+                    <span className={`tag ${en.estado === 'pagado' ? 'ok' : en.estado === 'pendiente' ? 'warn' : 'bad'}`}>{ETIQUETA_ESTADO_ENLACE[en.estado]}</span>
+                  </td>
+                  <td className="num" style={{ whiteSpace: 'nowrap' }}>
+                    {en.estado === 'pendiente' && (
+                      <>
+                        <button className="btn gh sm" onClick={() => navigator.clipboard?.writeText(en.stripeUrl)}>
+                          Copiar
+                        </button>{' '}
+                        {en.paciente.telefono && (
+                          <button className="btn pri sm" onClick={() => enviarPorWhatsApp(en, null)}>
+                            WhatsApp
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {modalEnlace && (
+        <Modal onClose={() => setModalEnlace(null)}>
+          <h2>Generar enlace de pago</h2>
+          <p className="mini">El paciente paga online con tarjeta; en cuanto lo hace, se registra el cobro solo.</p>
+          <form onSubmit={generarEnlace}>
+            <div className="grid g2" style={{ marginTop: 12 }}>
+              <div className="f">
+                <label>Paciente</label>
+                <select name="pacienteId" defaultValue={modalEnlace.pacienteId || ''} required>
+                  <option value="">—</option>
+                  {pacientes.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nombre} {p.apellidos}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="f">
+                <label>Importe</label>
+                <input type="number" name="importe" step="0.01" min="0.5" required />
+              </div>
+            </div>
+            <div className="f">
+              <label>Concepto</label>
+              <input name="concepto" placeholder="Tratamiento, corona 26…" />
+            </div>
+            <div className="fila" style={{ justifyContent: 'flex-end' }}>
+              <button className="btn gh" type="button" onClick={() => setModalEnlace(null)}>
+                Cancelar
+              </button>
+              <button className="btn pri" type="submit" disabled={generandoEnlace}>
+                {generandoEnlace ? 'Generando…' : 'Generar y enviar'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
 
       {modalAbierto && (
         <Modal onClose={() => setModalAbierto(null)}>

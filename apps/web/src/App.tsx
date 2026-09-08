@@ -24,6 +24,8 @@ import { Almacen } from './pages/Almacen';
 import { Compras } from './pages/Compras';
 import { Banco } from './pages/Banco';
 import { Marketing } from './pages/Marketing';
+import { PagoCompletado } from './pages/PagoCompletado';
+import { PagoCancelado } from './pages/PagoCancelado';
 
 function RutaPrivada({ children }: { children: JSX.Element }) {
   const { usuario, cargando } = useAuth();
@@ -38,6 +40,8 @@ function Rutas() {
       <Route path="/login" element={<Login />} />
       <Route path="/acceso/:token" element={<AccesoPaciente />} />
       <Route path="/mi" element={<MiPortal />} />
+      <Route path="/pago-completado" element={<PagoCompletado />} />
+      <Route path="/pago-cancelado" element={<PagoCancelado />} />
       <Route
         element={
           <RutaPrivada>

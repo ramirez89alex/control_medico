@@ -12,6 +12,8 @@ export const env = {
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
   s3: {
     endpoint: required('S3_ENDPOINT'),
     region: process.env.S3_REGION || 'us-east-1',
