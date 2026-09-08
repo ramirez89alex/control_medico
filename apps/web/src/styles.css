@@ -289,7 +289,12 @@ audio{width:100%;margin-top:6px}
 .cita:hover{background:color-mix(in srgb,var(--c) 22%,#fff)}
 .cita b{font-size:12.5px;font-family:'Space Grotesk';overflow-wrap:anywhere}
 .cita .mini{font-size:10.5px;white-space:normal;overflow-wrap:anywhere}
-.cita .x{position:absolute;top:2px;right:2px;border:0;background:none;cursor:pointer;color:var(--tenue);font-size:14px;line-height:1}
+.cita .x{
+  position:absolute;top:3px;right:3px;z-index:3;border:0;cursor:pointer;color:var(--grafito-2);
+  background:rgba(255,255,255,.9);width:20px;height:20px;border-radius:50%;font-size:11px;line-height:1;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(36,42,77,.22)
+}
+.cita .x:hover{background:#fff;color:var(--marca)}
 .proxima{margin-top:8px;background:#FBF1F0;border:1px solid #EBC7C4;border-radius:9px;padding:8px 11px;font-size:13.5px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:640px}
 
 .fin{display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:#FBF1F0;border:1px solid #EBC7C4;border-radius:10px;padding:11px 14px;margin-top:12px}

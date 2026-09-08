@@ -209,12 +209,13 @@ export function Agenda() {
         )}
         <button
           className="x"
+          title="Editar cita"
           onClick={(e) => {
             e.stopPropagation();
             setModalCita(c);
           }}
         >
-          ⋯
+          ✏️
         </button>
       </div>
     );
@@ -315,7 +316,7 @@ export function Agenda() {
       <div className="card planning-wrap">
         <div className="entre" style={{ marginBottom: 10 }}>
           <h3>Planning por gabinete</h3>
-          <span className="mini">Toca una cita para abrir la ficha del paciente · toca ⋯ para editarla</span>
+          <span className="mini">Toca una cita para abrir la ficha del paciente · toca ✏️ para editarla</span>
         </div>
         {cargando ? (
           <p className="vacio">Cargando…</p>
