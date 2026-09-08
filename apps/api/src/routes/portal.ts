@@ -1,8 +1,10 @@
 import { Router } from 'express';
-import { saldoPaciente } from '@powerdent/shared';
+import { saldoPaciente, pendientePaciente } from '@powerdent/shared';
 import { prisma } from '../lib/prisma.js';
 import { clinicaDe, pacienteDe, requireAuth, requirePaciente } from '../middleware/auth.js';
 import { presignDescarga } from '../lib/s3.js';
+import { stripe } from '../lib/stripe.js';
+import { env } from '../env.js';
 
 export const portalRouter = Router();
 portalRouter.use(requireAuth, requirePaciente);
@@ -84,6 +86,60 @@ portalRouter.get('/mi', async (req, res) => {
       firmaUrl,
     },
   });
+});
+
+/**
+ * El propio paciente paga su pendiente desde el portal, sin pasar por recepción. El importe
+ * nunca lo manda el cliente — se recalcula aquí igual que en /portal/mi, para que no se pueda
+ * manipular desde el navegador.
+ */
+portalRouter.post('/pagar', async (req, res) => {
+  if (!stripe) {
+    return res.status(503).json({ error: 'El pago online no está disponible ahora mismo. Pide en recepción que te generen el cobro.' });
+  }
+  const pacienteId = pacienteDe(req);
+  const clinicaId = clinicaDe(req);
+
+  const [paciente, presupuestosAceptados, cobros] = await Promise.all([
+    prisma.paciente.findUniqueOrThrow({ where: { id: pacienteId } }),
+    prisma.presupuesto.findMany({ where: { pacienteId, deletedAt: null, estado: 'aceptado' }, include: { lineas: true } }),
+    prisma.cobro.findMany({ where: { pacienteId, deletedAt: null } }),
+  ]);
+
+  const aceptados = presupuestosAceptados.map((p) => ({
+    lineas: p.lineas.map((l) => ({ id: l.id, cod: l.codigo, n: l.nombre, pieza: l.pieza, cant: l.cantidad, pvp: l.pvp, coste: l.coste })),
+    dto: p.descuentoPct,
+  }));
+  const pendiente = pendientePaciente(aceptados, cobros.map((c) => ({ importe: c.importe })));
+  if (pendiente <= 0.5) return res.status(400).json({ error: 'No tienes ningún importe pendiente.' });
+
+  const session = await stripe.checkout.sessions.create({
+    mode: 'payment',
+    payment_method_types: ['card'],
+    line_items: [
+      {
+        price_data: { currency: 'eur', product_data: { name: 'Pago de tratamiento dental' }, unit_amount: Math.round(pendiente * 100) },
+        quantity: 1,
+      },
+    ],
+    success_url: `${env.frontendUrl}/pago-completado?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${env.frontendUrl}/mi`,
+    customer_email: paciente.email || undefined,
+  });
+
+  await prisma.enlacePago.create({
+    data: {
+      clinicaId,
+      pacienteId,
+      importe: pendiente,
+      concepto: 'Pago desde el portal del paciente',
+      stripeSessionId: session.id,
+      stripeUrl: session.url || '',
+      origen: 'paciente',
+    },
+  });
+
+  res.status(201).json({ url: session.url });
 });
 
 portalRouter.post('/checkin', async (req, res) => {

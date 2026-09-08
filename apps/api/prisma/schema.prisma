@@ -51,6 +51,11 @@ enum EstadoEnlacePago {
   cancelado
 }
 
+enum OrigenEnlacePago {
+  personal
+  paciente
+}
+
 enum EstadoLaboratorio {
   enviado
   recibido
@@ -448,7 +453,9 @@ model EnlacePago {
   estado            EstadoEnlacePago @default(pendiente)
   cobroId           String?          @unique @map("cobro_id")
   cobro             Cobro?           @relation(fields: [cobroId], references: [id])
-  creadoPorUsuarioId String          @map("creado_por_usuario_id")
+  origen            OrigenEnlacePago @default(personal)
+  /// Null cuando origen="paciente" (autoservicio desde el portal, sin sesión de personal detrás).
+  creadoPorUsuarioId String?         @map("creado_por_usuario_id")
   createdAt         DateTime         @default(now())
   pagadoEn          DateTime?        @map("pagado_en")
   deletedAt         DateTime?        @map("deleted_at")

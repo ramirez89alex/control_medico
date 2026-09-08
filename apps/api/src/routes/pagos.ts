@@ -124,7 +124,7 @@ export async function pagosWebhookHandler(req: Request, res: Response) {
           });
           await tx.enlacePago.update({ where: { id: enlace.id }, data: { estado: 'pagado', pagadoEn: new Date(), cobroId: cobro.id } });
         });
-        registrarAuditoria({ clinicaId: enlace.clinicaId, usuarioId: enlace.creadoPorUsuarioId, accion: 'pagado', entidad: 'enlace_pago', entidadId: enlace.id });
+        registrarAuditoria({ clinicaId: enlace.clinicaId, usuarioId: enlace.creadoPorUsuarioId || enlace.pacienteId, accion: 'pagado', entidad: 'enlace_pago', entidadId: enlace.id });
       }
     }
   }

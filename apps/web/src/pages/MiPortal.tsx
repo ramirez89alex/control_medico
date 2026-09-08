@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiPaciente, refrescarSesionPaciente, salirPaciente } from '../lib/api-paciente';
+import { ApiError } from '../lib/api';
 import { Modal } from '../components/Modal';
 import { ConsentimientoDocumento } from '../components/ConsentimientoDocumento';
 import type { ClinicaLegal } from '../lib/legal';
@@ -100,6 +101,8 @@ export function MiPortal() {
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
   const [viendoConsentimiento, setViendoConsentimiento] = useState(false);
+  const [pagando, setPagando] = useState(false);
+  const [errorPago, setErrorPago] = useState<string | null>(null);
 
   async function cargar() {
     try {
@@ -128,6 +131,18 @@ export function MiPortal() {
   async function checkin() {
     await apiPaciente.post('/portal/checkin');
     cargar();
+  }
+
+  async function pagarPendiente() {
+    setPagando(true);
+    setErrorPago(null);
+    try {
+      const { url } = await apiPaciente.post<{ url: string }>('/portal/pagar');
+      window.location.href = url;
+    } catch (err) {
+      setErrorPago(err instanceof ApiError ? err.message : 'No se pudo iniciar el pago');
+      setPagando(false);
+    }
   }
 
   if (cargando) return <p className="mini" style={{ textAlign: 'center', marginTop: '20vh' }}>Cargando…</p>;
@@ -208,6 +223,18 @@ export function MiPortal() {
               <b>{eur(saldo.pendiente)}</b>
             </div>
           </div>
+          {saldo.pendiente > 0.5 && (
+            <>
+              <button className="btn pri grande" style={{ width: '100%', marginTop: 10 }} onClick={pagarPendiente} disabled={pagando}>
+                {pagando ? 'Abriendo pago…' : `Pagar ${eur(saldo.pendiente)} online`}
+              </button>
+              {errorPago && (
+                <p className="mini" style={{ color: 'var(--rojo)', marginTop: 6 }}>
+                  {errorPago}
+                </p>
+              )}
+            </>
+          )}
           <b className="mini" style={{ display: 'block', marginTop: 14 }}>
             TRATAMIENTOS REALIZADOS
           </b>

@@ -29,6 +29,7 @@ interface EnlacePago {
   importe: number;
   concepto: string | null;
   estado: 'pendiente' | 'pagado' | 'expirado' | 'cancelado';
+  origen: 'personal' | 'paciente';
   stripeUrl: string;
   createdAt: string;
   paciente: Paciente;
@@ -272,7 +273,14 @@ export function Cobros() {
                     <b>
                       {en.paciente.nombre} {en.paciente.apellidos}
                     </b>
-                    <div className="mini">{en.concepto || ''}</div>
+                    <div className="mini">
+                      {en.concepto || ''}
+                      {en.origen === 'paciente' && (
+                        <span className="tag info" style={{ marginLeft: 6 }}>
+                          Iniciado por el paciente
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="num">{eur(en.importe)}</td>
                   <td style={{ width: 110 }}>
