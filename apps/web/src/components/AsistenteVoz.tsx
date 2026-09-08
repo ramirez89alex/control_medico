@@ -25,6 +25,7 @@ type AccionVoz =
   | 'agendar'
   | 'mover_cita'
   | 'disponibilidad'
+  | 'consultar_citas'
   | 'confirmar_pendientes'
   | 'pedir_confirmacion'
   | 'crear_paciente'
@@ -59,6 +60,7 @@ interface ResultadoVoz {
   accesoUrl: string | null;
   historiaRegistrada: { id: string; acto: string; paciente: string } | null;
   odontogramaActualizado: { pieza: string; estado: string; paciente: string } | null;
+  citasDelDia: { id: string; hora: string; paciente: string; motivo: string | null; dentista: string | null; gabinete: string | null }[];
 }
 
 function fechaCorta(fecha: string) {
@@ -244,6 +246,22 @@ export function AsistenteVoz() {
       }
       return;
     }
+    if (r.accion === 'consultar_citas') {
+      const dia = fechaHablada(r.fecha || hoyISO());
+      const conFiltro = [r.gabinete ? r.gabinete.nombre : '', r.dentista ? r.dentista.nombre : ''].filter(Boolean).join(' con ');
+      const filtroHablado = conFiltro ? ` en ${conFiltro}` : '';
+      if (!r.citasDelDia.length) {
+        hablar(`No hay citas el ${dia}${filtroHablado}.`);
+      } else {
+        const primeras = r.citasDelDia
+          .slice(0, 5)
+          .map((c) => `${c.paciente} a ${horaHablada(c.hora)}`)
+          .join('; ');
+        const resto = r.citasDelDia.length > 5 ? `, y ${r.citasDelDia.length - 5} más` : '';
+        hablar(`El ${dia}${filtroHablado} tienes ${r.citasDelDia.length} citas: ${primeras}${resto}.`);
+      }
+      return;
+    }
     if (r.accion === 'confirmar_pendientes') {
       if (!r.pendientes.length) {
         hablar('No tienes ninguna cita pendiente de confirmar en los próximos días.');
@@ -324,9 +342,7 @@ export function AsistenteVoz() {
       return;
     }
     if (r.accion === 'otro') {
-      hablar(
-        'No he entendido esa orden. Puedo agendar o cambiar citas, decirte la disponibilidad, pedir confirmación, crear o abrir la ficha de un paciente, preparar un presupuesto, registrar un cobro, generar el acceso al portal, anotar en la historia clínica, o marcar el odontograma.',
-      );
+      hablar('Perdona, no te he entendido bien. ¿Puedes repetirlo? Tienes ejemplos de lo que puedo hacer en pantalla.');
       return;
     }
     if (r.accion === 'mover_cita') {
@@ -529,6 +545,47 @@ export function AsistenteVoz() {
                 <p className="mini" style={{ marginTop: 6 }}>
                   Sin huecos libres ese día.
                 </p>
+              )}
+              <div className="fila" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
+                <button type="button" className="btn gh" onClick={() => setResultado(null)}>
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          )}
+          {resultado && resultado.accion === 'consultar_citas' && (
+            <div style={{ marginTop: 10, borderTop: '1px solid var(--linea)', paddingTop: 10 }}>
+              <p className="mini">Escuché: “{resultado.texto}”</p>
+              <p style={{ marginTop: 8 }}>
+                <span className="tag info">{fechaCorta(resultado.fecha || hoyISO())}</span>
+                {resultado.gabinete && <span className="tag" style={{ marginLeft: 6 }}>{resultado.gabinete.nombre}</span>}
+                {resultado.dentista && <span className="tag" style={{ marginLeft: 6 }}>{resultado.dentista.nombre}</span>}
+              </p>
+              {resultado.avisos.map((a, i) => (
+                <p className="mini" key={i} style={{ color: 'var(--tenue)' }}>
+                  {a}
+                </p>
+              ))}
+              {resultado.citasDelDia.length === 0 ? (
+                <p className="mini" style={{ marginTop: 6 }}>
+                  Sin citas ese día.
+                </p>
+              ) : (
+                <table style={{ marginTop: 8 }}>
+                  <tbody>
+                    {resultado.citasDelDia.map((c) => (
+                      <tr key={c.id}>
+                        <td className="mono" style={{ width: 52 }}>
+                          {c.hora}
+                        </td>
+                        <td>
+                          <b>{c.paciente}</b>
+                          <div className="mini">{[c.motivo, c.dentista, c.gabinete].filter(Boolean).join(' · ')}</div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               )}
               <div className="fila" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
                 <button type="button" className="btn gh" onClick={() => setResultado(null)}>
@@ -776,11 +833,15 @@ export function AsistenteVoz() {
           {resultado && resultado.accion === 'otro' && (
             <div style={{ marginTop: 10, borderTop: '1px solid var(--linea)', paddingTop: 10 }}>
               <p className="mini">Escuché: “{resultado.texto}”</p>
+              <p style={{ marginTop: 6, fontWeight: 600 }}>Perdona, no te he entendido bien. ¿Puedes repetirlo?</p>
               <p className="mini" style={{ marginTop: 6 }}>
-                No he entendido esa orden. Puedo agendar/cambiar citas, decir la disponibilidad, pedir confirmación, crear o abrir un paciente,
+                Puedo agendar/cambiar citas, decir la disponibilidad, pedir confirmación, crear o abrir un paciente,
                 preparar un presupuesto, registrar un cobro, generar el acceso al portal, anotar en la historia clínica, o marcar el odontograma.
               </p>
               <div className="fila" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
+                <button type="button" className="btn pri" onClick={() => { setResultado(null); iniciarEscuchaUnica(); }}>
+                  🎙 Repetir
+                </button>
                 <button type="button" className="btn gh" onClick={() => setResultado(null)}>
                   Cerrar
                 </button>

@@ -17,6 +17,7 @@ const ACCIONES = [
   'agendar',
   'mover_cita',
   'disponibilidad',
+  'consultar_citas',
   'confirmar_pendientes',
   'pedir_confirmacion',
   'crear_paciente',
@@ -193,7 +194,7 @@ vozRouter.post('/interpretar-cita', async (req, res) => {
   const sistema = `Eres el asistente de voz/texto de la gestión de una clínica dental en España (interpreta español de España por defecto, pero entiende cualquier variante o forma de decir las cosas, formal o coloquial, con o sin acentos correctos). Te dan una frase u orden en texto, dicha por el personal de la clínica. Hoy es ${hoy} (formato AAAA-MM-DD).
 
 Tu trabajo es CLASIFICAR la intención con la mayor flexibilidad posible — la misma intención se puede decir de muchísimas formas distintas, y debes reconocerla igual. Devuelve SOLO un JSON, sin texto ni markdown alrededor, con esta forma exacta:
-{"accion": "agendar" | "mover_cita" | "disponibilidad" | "confirmar_pendientes" | "pedir_confirmacion" | "crear_paciente" | "abrir_paciente" | "crear_presupuesto" | "registrar_cobro" | "generar_acceso" | "registrar_historia" | "actualizar_odontograma" | "otro",
+{"accion": "agendar" | "mover_cita" | "disponibilidad" | "consultar_citas" | "confirmar_pendientes" | "pedir_confirmacion" | "crear_paciente" | "abrir_paciente" | "crear_presupuesto" | "registrar_cobro" | "generar_acceso" | "registrar_historia" | "actualizar_odontograma" | "otro",
 "paciente": "nombre del paciente mencionado o null",
 "apellidosPaciente": "apellidos, SOLO si en 'crear_paciente' los dijeron claramente separados del nombre, si no null",
 "telefonoPaciente": "teléfono dictado, solo dígitos, o null",
@@ -213,7 +214,8 @@ Significado de cada acción — reconoce CUALQUIER forma razonable de pedirlas, 
 - "agendar": reservar una cita NUEVA. Ej: "agenda una cita para María", "resérvame hueco con el doctor Garbarino mañana", "dale cita a Juan para el lunes a las diez", "necesito meter una revisión para Ana". No hace falta fecha/hora: si faltan, se busca el primer hueco libre automáticamente.
 - "mover_cita": cambiar fecha, hora, profesional o gabinete de una cita YA EXISTENTE. Ej: "cambia la cita de Alexander al viernes", "mueve a las cinco la cita de María", "aplaza la revisión de Juan una semana", "pon la cita de Ana con la doctora Lucía en vez de con Garbarino". "fecha"/"hora" son los valores NUEVOS.
 - "pedir_confirmacion": pedir/enviar confirmación de la cita de un paciente CONCRETO. Ej: "pide confirmación a María", "manda un wasap a Alexander para confirmar", "confirma la cita de Juan".
-- "disponibilidad": preguntar qué huecos hay, sin reservar nada. Ej: "¿qué huecos hay mañana?", "dime la disponibilidad del jueves", "¿a qué hora tengo libre con la doctora Lucía?". Si no dicen día, usa hoy (${hoy}).
+- "disponibilidad": preguntar qué huecos LIBRES hay, sin reservar nada. Ej: "¿qué huecos hay mañana?", "dime la disponibilidad del jueves", "¿a qué hora tengo libre con la doctora Lucía?". Si no dicen día, usa hoy (${hoy}).
+- "consultar_citas": preguntar qué citas YA OCUPADAS/reservadas hay — lo contrario de "disponibilidad". Ej: "¿qué citas tiene el gabinete 1?", "dime la agenda de mañana", "¿qué citas hay hoy con la doctora Lucía?", "¿quién tiene hora a las diez?", "enséñame las citas del gabinete 2 el viernes". Si no dicen día, usa hoy (${hoy}). "gabinete"/"dentista" son filtros opcionales.
 - "confirmar_pendientes": preguntar en general qué citas faltan por confirmar, SIN nombrar paciente. Ej: "¿qué citas faltan por confirmar?", "dime las pendientes de confirmación".
 - "crear_paciente": dar de alta un paciente NUEVO. Ej: "crea un paciente nuevo que se llama Pedro Gómez", "dame de alta a Lucía Fernández, su teléfono es...", "apunta un cliente nuevo llamado...". Pon el nombre completo en "paciente" (y en "apellidosPaciente" solo si los distinguen claramente).
 - "abrir_paciente": abrir/entrar en la ficha de un paciente ya existente. Ej: "abre la ficha de María", "entra al paciente Alexander", "quiero ver el historial de Juan", "búscame a Ana García".
@@ -269,6 +271,7 @@ Si mencionan un profesional o doctor concreto, ponlo en "dentista". Si mencionan
     accesoUrl: null as string | null,
     historiaRegistrada: null as { id: string; acto: string; paciente: string } | null,
     odontogramaActualizado: null as { pieza: string; estado: string; paciente: string } | null,
+    citasDelDia: [] as { id: string; hora: string; paciente: string; motivo: string | null; dentista: string | null; gabinete: string | null }[],
   };
 
   if (accion === 'confirmar_pendientes') {
@@ -328,6 +331,34 @@ Si mencionan un profesional o doctor concreto, ponlo en "dentista". Si mencionan
     const diaSemana = new Date(`${fechaConsulta}T00:00:00`).getDay();
     const libres = huecosLibres(fechaConsulta, diaSemana, clinica.horario as HorarioSemana, aSlots(citasDelDia), gabinetes.map((g) => g.id));
     return res.json({ ...respuestaBase, fecha: fechaConsulta, libres });
+  }
+
+  if (accion === 'consultar_citas') {
+    const avisos: string[] = [];
+    const fechaConsulta = interpretacion.fecha || hoy;
+    const { resuelto: dentistaResuelto, id: dentistaIdFiltro } = await resolverDentista(clinicaId, interpretacion.dentista, avisos);
+    const { resuelto: gabineteResuelto, id: gabineteIdFiltro } = await resolverGabinete(clinicaId, interpretacion.gabinete, avisos);
+    const citas = await prisma.cita.findMany({
+      where: {
+        clinicaId,
+        fecha: fechaConsulta,
+        deletedAt: null,
+        estado: { not: 'cancelada' },
+        ...(dentistaIdFiltro ? { dentistaId: dentistaIdFiltro } : {}),
+        ...(gabineteIdFiltro ? { gabineteId: gabineteIdFiltro } : {}),
+      },
+      include: { paciente: true, dentista: true, gabinete: true },
+      orderBy: { hora: 'asc' },
+    });
+    const citasDelDia = citas.map((c) => ({
+      id: c.id,
+      hora: c.hora,
+      paciente: c.paciente ? `${c.paciente.nombre} ${c.paciente.apellidos}` : c.nombreLibre || 'Sin nombre',
+      motivo: c.motivo,
+      dentista: c.dentista?.nombre || null,
+      gabinete: c.gabinete?.nombre || null,
+    }));
+    return res.json({ ...respuestaBase, dentista: dentistaResuelto, gabinete: gabineteResuelto, fecha: fechaConsulta, citasDelDia, avisos });
   }
 
   if (accion === 'crear_paciente') {
