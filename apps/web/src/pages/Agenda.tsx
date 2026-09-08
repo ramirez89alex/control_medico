@@ -174,6 +174,7 @@ export function Agenda() {
 
   const [vozEscuchando, setVozEscuchando] = useState(false);
   const [vozParcial, setVozParcial] = useState('');
+  const [vozUltimoOido, setVozUltimoOido] = useState('');
   const [vozManual, setVozManual] = useState('');
   const [vozCargando, setVozCargando] = useState(false);
   const [vozError, setVozError] = useState<string | null>(null);
@@ -534,10 +535,14 @@ export function Agenda() {
       if (dicho) {
         setVozParcial('');
         if (PALABRA_CLAVE_RE.test(dicho)) {
+          setVozUltimoOido('');
           const orden = dicho.replace(PALABRA_CLAVE_RE, '').trim();
           if (orden) interpretarVoz(orden);
+        } else {
+          // No empezaba por la palabra clave: se ignora como orden, pero se avisa de
+          // lo que se ha oído para que no parezca que el micrófono no funciona.
+          setVozUltimoOido(dicho);
         }
-        // si no empieza por la palabra clave ("Power…"), se ignora en silencio
       }
     };
     rec.onerror = (ev: any) => {
@@ -580,6 +585,7 @@ export function Agenda() {
     }
     vozActivaRef.current = true;
     setVozError(null);
+    setVozUltimoOido('');
     iniciarReconocimientoContinuo();
   }
 
@@ -707,6 +713,11 @@ export function Agenda() {
           </form>
         </div>
         {vozParcial && <p className="mini">“{vozParcial}”</p>}
+        {!vozParcial && vozUltimoOido && (
+          <p className="mini" style={{ color: 'var(--ambar)' }}>
+            Te he oído decir “{vozUltimoOido}”, pero para darme una orden empieza diciendo “Power” (ej.: “Power, {vozUltimoOido.toLowerCase()}”).
+          </p>
+        )}
         {vozCargando && <p className="mini">Interpretando…</p>}
         {vozError && (
           <p className="mini" style={{ color: 'var(--rojo)' }}>
