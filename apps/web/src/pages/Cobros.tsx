@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, ApiError } from '../lib/api';
+import { api, ApiError, API_URL } from '../lib/api';
 import { Modal } from '../components/Modal';
 
 interface Paciente {
@@ -31,8 +31,13 @@ interface EnlacePago {
   estado: 'pendiente' | 'pagado' | 'expirado' | 'cancelado';
   origen: 'personal' | 'paciente';
   stripeUrl: string;
+  codigoCorto: string;
   createdAt: string;
   paciente: Paciente;
+}
+
+function enlaceCorto(codigoCorto: string) {
+  return `${API_URL}/pagos/ir/${codigoCorto}`;
 }
 
 const ETIQUETA_ESTADO_ENLACE: Record<EnlacePago['estado'], string> = {
@@ -118,7 +123,7 @@ export function Cobros() {
   const pendientePreseleccionado = modalAbierto?.pacienteId ? saldos.find((s) => s.paciente.id === modalAbierto.pacienteId)?.pendiente || 0 : 0;
 
   function enviarPorWhatsApp(enlace: EnlacePago, ventana: Window | null) {
-    const texto = `Hola ${enlace.paciente.nombre}, te escribimos de PowerDent.\n\nAquí tienes el enlace para pagar online${enlace.concepto ? ` (${enlace.concepto})` : ''}, ${eur(enlace.importe)}:\n${enlace.stripeUrl}\n\n¡Gracias!`;
+    const texto = `Hola ${enlace.paciente.nombre}, te escribimos de PowerDent.\n\nYa puedes pagar${enlace.concepto ? ` tu ${enlace.concepto.toLowerCase()}` : ''} online de forma segura, ${eur(enlace.importe)}.\n\n👉 Paga aquí: ${enlaceCorto(enlace.codigoCorto)}\n\n¡Gracias!`;
     const urlWA = `https://wa.me/${telWA(enlace.paciente.telefono || '')}?text=${encodeURIComponent(texto)}`;
     if (ventana) ventana.location.href = urlWA;
     else window.open(urlWA, '_blank');
@@ -289,7 +294,7 @@ export function Cobros() {
                   <td className="num" style={{ whiteSpace: 'nowrap' }}>
                     {en.estado === 'pendiente' && (
                       <>
-                        <button className="btn gh sm" onClick={() => navigator.clipboard?.writeText(en.stripeUrl)}>
+                        <button className="btn gh sm" onClick={() => navigator.clipboard?.writeText(enlaceCorto(en.codigoCorto))}>
                           Copiar
                         </button>{' '}
                         {en.paciente.telefono && (

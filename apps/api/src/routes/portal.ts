@@ -5,6 +5,7 @@ import { clinicaDe, pacienteDe, requireAuth, requirePaciente } from '../middlewa
 import { presignDescarga } from '../lib/s3.js';
 import { stripe } from '../lib/stripe.js';
 import { env } from '../env.js';
+import { nuevoCodigoCorto } from './pagos.js';
 
 export const portalRouter = Router();
 portalRouter.use(requireAuth, requirePaciente);
@@ -135,6 +136,7 @@ portalRouter.post('/pagar', async (req, res) => {
       concepto: 'Pago desde el portal del paciente',
       stripeSessionId: session.id,
       stripeUrl: session.url || '',
+      codigoCorto: nuevoCodigoCorto(),
       origen: 'paciente',
     },
   });

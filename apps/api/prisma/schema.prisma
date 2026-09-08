@@ -450,6 +450,10 @@ model EnlacePago {
   concepto          String?
   stripeSessionId   String           @unique @map("stripe_session_id")
   stripeUrl         String           @map("stripe_url")
+  /// Código corto para el enlace que se manda al paciente (/pagos/ir/:codigo redirige al
+  /// checkout real de Stripe) — la URL de Stripe es larga y con un fragmento ilegible, esto
+  /// da un enlace corto bajo el propio dominio de la clínica, más de fiar a simple vista.
+  codigoCorto       String           @unique @map("codigo_corto")
   estado            EstadoEnlacePago @default(pendiente)
   cobroId           String?          @unique @map("cobro_id")
   cobro             Cobro?           @relation(fields: [cobroId], references: [id])

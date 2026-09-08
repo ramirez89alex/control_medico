@@ -24,7 +24,7 @@ import { comprasRouter } from './routes/compras.js';
 import { bancoRouter } from './routes/banco.js';
 import { marketingRouter } from './routes/marketing.js';
 import { dashboardRouter } from './routes/dashboard.js';
-import { pagosRouter, pagosWebhookHandler, estadoPagoPublico } from './routes/pagos.js';
+import { pagosRouter, pagosWebhookHandler, estadoPagoPublico, irAPago } from './routes/pagos.js';
 
 const app = express();
 
@@ -65,8 +65,11 @@ app.use('/compras', comprasRouter);
 app.use('/banco', bancoRouter);
 app.use('/marketing', marketingRouter);
 app.use('/dashboard', dashboardRouter);
-// Registrada antes de montar pagosRouter (que exige sesión de personal) porque esta ruta
-// concreta es pública — si no, /pagos/publico/:sessionId caería dentro de su requireAuth.
+// Registradas antes de montar pagosRouter (que exige sesión de personal) porque son públicas
+// — si no, caerían dentro de su requireAuth. /pagos/ir/:codigo es el enlace corto que se
+// manda al paciente por WhatsApp; /pagos/publico/:sessionId lo consulta la página de "pago
+// completado".
+app.get('/pagos/ir/:codigo', irAPago);
 app.get('/pagos/publico/:sessionId', estadoPagoPublico);
 app.use('/pagos', pagosRouter);
 

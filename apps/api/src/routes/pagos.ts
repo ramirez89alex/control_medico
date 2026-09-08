@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from 'express';
+import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { stripe } from '../lib/stripe.js';
@@ -8,6 +9,11 @@ import { env } from '../env.js';
 
 export const pagosRouter = Router();
 pagosRouter.use(requireAuth, requireRol('admin', 'dentista', 'recepcion'));
+
+/** 8 caracteres en base64url (~48 bits), suficiente para no adivinarlo y sin fricción visual. */
+export function nuevoCodigoCorto(): string {
+  return randomBytes(6).toString('base64url');
+}
 
 const enlaceSchema = z.object({
   pacienteId: z.string().uuid(),
@@ -55,6 +61,7 @@ pagosRouter.post('/enlace', async (req, res) => {
       concepto,
       stripeSessionId: session.id,
       stripeUrl: session.url || '',
+      codigoCorto: nuevoCodigoCorto(),
       creadoPorUsuarioId: usuarioDe(req),
     },
     include: { paciente: true },
@@ -75,6 +82,25 @@ pagosRouter.get('/enlaces', async (req, res) => {
   });
   res.json(enlaces);
 });
+
+/**
+ * Enlace corto que se manda al paciente (WhatsApp, SMS...) en vez de la URL larga y con
+ * fragmento ilegible de Stripe. Redirige al checkout si sigue pendiente, o a la página de
+ * confirmación si ya se pagó (por si vuelven a tocar el mismo enlace después de pagar).
+ */
+export async function irAPago(req: Request, res: Response) {
+  const codigo = String(req.params.codigo || '');
+  const enlace = await prisma.enlacePago.findFirst({ where: { codigoCorto: codigo, deletedAt: null } });
+  if (!enlace) return res.redirect(`${env.frontendUrl}/pago-cancelado`);
+
+  if (enlace.estado === 'pagado') {
+    return res.redirect(`${env.frontendUrl}/pago-completado?session_id=${enlace.stripeSessionId}`);
+  }
+  if (enlace.estado !== 'pendiente') {
+    return res.redirect(`${env.frontendUrl}/pago-cancelado`);
+  }
+  res.redirect(enlace.stripeUrl);
+}
 
 /** Estado consultado sin sesión de personal: la propia página de "pago completado" del
  * paciente lo usa para confirmar que Stripe ya avisó al servidor. El id de sesión de Stripe
