@@ -6,6 +6,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  LabelList,
   Legend,
   Pie,
   PieChart,
@@ -143,7 +144,9 @@ export function Dashboard() {
                 <XAxis dataKey="etiqueta" tick={{ fontSize: 12.5, fill: 'var(--tenue)' }} axisLine={{ stroke: 'var(--linea)' }} tickLine={false} />
                 <YAxis tick={{ fontSize: 12, fill: 'var(--tenue)' }} axisLine={false} tickLine={false} tickFormatter={(v) => eur(v)} width={72} />
                 <Tooltip content={<TooltipCard formatear={eur} />} />
-                <Area type="monotone" dataKey="total" name="Cobrado" stroke={TEAL} strokeWidth={2.5} fill="url(#ingresosFill)" />
+                <Area type="monotone" dataKey="total" name="Cobrado" stroke={TEAL} strokeWidth={2.5} fill="url(#ingresosFill)" isAnimationActive={false}>
+                  <LabelList dataKey="total" position="top" formatter={(v: unknown) => (typeof v === 'number' && v > 0 ? eur(v) : '')} style={{ fontSize: 11, fill: 'var(--tenue)' }} />
+                </Area>
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -159,8 +162,12 @@ export function Dashboard() {
                   <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: 'var(--tenue)' }} axisLine={false} tickLine={false} width={28} />
                   <Tooltip content={<TooltipCard />} />
                   <Legend wrapperStyle={{ fontSize: 12.5 }} />
-                  <Bar dataKey="emitidos" name="Emitidos" fill={AZUL} radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="aceptados" name="Aceptados" fill={VERDE} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="emitidos" name="Emitidos" fill={AZUL} radius={[4, 4, 0, 0]} isAnimationActive={false}>
+                    <LabelList dataKey="emitidos" position="top" style={{ fontSize: 11, fill: 'var(--tenue)' }} />
+                  </Bar>
+                  <Bar dataKey="aceptados" name="Aceptados" fill={VERDE} radius={[4, 4, 0, 0]} isAnimationActive={false}>
+                    <LabelList dataKey="aceptados" position="top" style={{ fontSize: 11, fill: 'var(--tenue)' }} />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -174,7 +181,9 @@ export function Dashboard() {
                   <XAxis dataKey="etiqueta" tick={{ fontSize: 12.5, fill: 'var(--tenue)' }} axisLine={{ stroke: 'var(--linea)' }} tickLine={false} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: 'var(--tenue)' }} axisLine={false} tickLine={false} width={28} />
                   <Tooltip content={<TooltipCard />} />
-                  <Bar dataKey="cantidad" name="Pacientes" fill={VIOLETA} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="cantidad" name="Pacientes" fill={VIOLETA} radius={[4, 4, 0, 0]} isAnimationActive={false}>
+                    <LabelList dataKey="cantidad" position="top" style={{ fontSize: 11, fill: 'var(--tenue)' }} />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -190,6 +199,7 @@ export function Dashboard() {
                 <ResponsiveContainer width="100%" height={240}>
                   <PieChart>
                     <Pie
+                      isAnimationActive={false}
                       data={[
                         { nombre: 'Cobrado', valor: datos.kpis.pagadoTotal },
                         { nombre: 'Pendiente', valor: Math.max(0, datos.kpis.pendienteTotal) },
@@ -199,6 +209,8 @@ export function Dashboard() {
                       innerRadius={55}
                       outerRadius={85}
                       paddingAngle={2}
+                      label={({ value }: { value: number }) => eur(value)}
+                      labelLine={false}
                     >
                       <Cell fill={VERDE} />
                       <Cell fill={ROJO} />
@@ -218,7 +230,17 @@ export function Dashboard() {
               ) : (
                 <ResponsiveContainer width="100%" height={240}>
                   <PieChart>
-                    <Pie data={datos.citasPorEstado} dataKey="cantidad" nameKey="etiqueta" innerRadius={55} outerRadius={85} paddingAngle={2}>
+                    <Pie
+                      isAnimationActive={false}
+                      data={datos.citasPorEstado}
+                      dataKey="cantidad"
+                      nameKey="etiqueta"
+                      innerRadius={55}
+                      outerRadius={85}
+                      paddingAngle={2}
+                      label={({ value }: { value: number }) => String(value)}
+                      labelLine={false}
+                    >
                       {datos.citasPorEstado.map((_, i) => (
                         <Cell key={i} fill={PALETA[i % PALETA.length]} />
                       ))}
@@ -238,7 +260,17 @@ export function Dashboard() {
               ) : (
                 <ResponsiveContainer width="100%" height={240}>
                   <PieChart>
-                    <Pie data={datos.cobrosPorForma} dataKey="importe" nameKey="etiqueta" innerRadius={55} outerRadius={85} paddingAngle={2}>
+                    <Pie
+                      isAnimationActive={false}
+                      data={datos.cobrosPorForma}
+                      dataKey="importe"
+                      nameKey="etiqueta"
+                      innerRadius={55}
+                      outerRadius={85}
+                      paddingAngle={2}
+                      label={({ value }: { value: number }) => eur(value)}
+                      labelLine={false}
+                    >
                       {datos.cobrosPorForma.map((_, i) => (
                         <Cell key={i} fill={PALETA[i % PALETA.length]} />
                       ))}
