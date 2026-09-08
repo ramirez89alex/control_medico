@@ -133,6 +133,7 @@ export function AsistenteVoz() {
   const [manual, setManual] = useState('');
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [exito, setExito] = useState<string | null>(null);
   const [resultado, setResultado] = useState<ResultadoVoz | null>(null);
   const [pacienteId, setPacienteId] = useState('');
   const [esperandoConfirmacion, setEsperandoConfirmacion] = useState(false);
@@ -190,12 +191,18 @@ export function AsistenteVoz() {
       });
     }
     setResultado(null);
+    const conProfesional = r.dentista ? ` con ${r.dentista.nombre}` : '';
+    const enGabinete = r.gabinete ? ` en ${r.gabinete.nombre}` : '';
+    setExito(`Cita confirmada: ${fechaCorta(r.fecha)} a las ${r.hora}${conProfesional}${enGabinete}.`);
     avisarCitasCambiadas();
   }
 
   function escucharRespuestaSiNo(r: ResultadoVoz, pid: string) {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) return;
+    if (!SR) {
+      setError('Este navegador no reconoce voz para confirmar por voz. Usa los botones en pantalla.');
+      return;
+    }
     const rec = new SR();
     rec.lang = 'es-ES';
     rec.continuous = false;
@@ -203,13 +210,16 @@ export function AsistenteVoz() {
     rec.onresult = (e: any) => {
       const dicho = sinAcentos((e.results[0]?.[0]?.transcript || '').toLowerCase());
       if (/\b(si|confirma|confirmar|vale|correcto|adelante|dale)\b/.test(dicho)) {
-        reservarDesdeVoz(r, pid).then(() => hablar('Cita agendada.'));
+        reservarDesdeVoz(r, pid).then(() => hablar('Cita confirmada.'));
       } else if (/\b(no|cancela|cancelar|descarta|descartar)\b/.test(dicho)) {
         setResultado(null);
         hablar('Vale, cancelado.');
       } else {
         hablar('No te he entendido. Puedes confirmar o descartar con los botones en pantalla.');
       }
+    };
+    rec.onerror = (ev: any) => {
+      setError((ERRORES_RECONOCIMIENTO[ev.error] || `No se pudo escuchar la confirmación (${ev.error}).`) + ' Usa los botones en pantalla.');
     };
     rec.onend = () => setEsperandoConfirmacion(false);
     reconocimientoConfirmRef.current = rec;
@@ -218,6 +228,7 @@ export function AsistenteVoz() {
       rec.start();
     } catch {
       setEsperandoConfirmacion(false);
+      setError('No se pudo escuchar la confirmación. Usa los botones en pantalla.');
     }
   }
 
@@ -365,6 +376,7 @@ export function AsistenteVoz() {
     setAbierto(true);
     setCargando(true);
     setError(null);
+    setExito(null);
     setResultado(null);
     try {
       const r = await api.post<ResultadoVoz>('/voz/interpretar-cita', { texto });
@@ -494,6 +506,14 @@ export function AsistenteVoz() {
             <p className="mini" style={{ color: 'var(--rojo)' }}>
               {error}
             </p>
+          )}
+          {exito && (
+            <div style={{ marginTop: 8 }}>
+              <p style={{ color: 'var(--verde)', fontWeight: 600 }}>✅ {exito}</p>
+              <button type="button" className="btn gh sm" onClick={() => setExito(null)}>
+                Cerrar
+              </button>
+            </div>
           )}
           {resultado && resultado.accion === 'disponibilidad' && (
             <div style={{ marginTop: 10, borderTop: '1px solid var(--linea)', paddingTop: 10 }}>

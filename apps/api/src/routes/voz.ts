@@ -99,6 +99,24 @@ async function buscarProximoHueco(
   return null;
 }
 
+/** De una lista de candidatos (gabinetes o dentistas), el primero sin cita solapada en ese hueco. */
+function primerLibreEnSlot(hora: string, slotsDelDia: CitaSlot[], candidatoIds: string[], campo: 'gabineteId' | 'dentistaId'): string | undefined {
+  const [hh, mm] = hora.split(':').map(Number);
+  const inicio = hh * 60 + mm;
+  const ocupados = new Set(
+    slotsDelDia
+      .filter((c) => c.estado !== 'cancelada')
+      .filter((c) => {
+        const [ch, cm] = c.hora.split(':').map(Number);
+        const ci = ch * 60 + cm;
+        return inicio >= ci && inicio < ci + (Number(c.dur) || 30);
+      })
+      .map((c) => (campo === 'gabineteId' ? c.gabineteId : c.dentistaId))
+      .filter((id): id is string => !!id),
+  );
+  return candidatoIds.find((id) => !ocupados.has(id));
+}
+
 async function resolverPaciente(clinicaId: string, nombre: string | null | undefined): Promise<PacienteBasico[]> {
   if (!nombre) return [];
   const partes = nombre.trim().split(/\s+/);
@@ -447,10 +465,10 @@ Si mencionan un profesional o doctor concreto, ponlo en "dentista". Si mencionan
       return res.json({ ...respuestaBase, candidatos: candidatosResueltos, avisos });
     }
 
-    const { resuelto: dentistaResuelto, id: dentistaIdNuevo } = await resolverDentista(clinicaId, interpretacion.dentista, avisos);
-    const { resuelto: gabineteResuelto, id: gabineteIdNuevo } = await resolverGabinete(clinicaId, interpretacion.gabinete, avisos);
-    const dentistaId = dentistaIdNuevo || citaExistente.dentistaId || undefined;
-    const gabineteIdFiltro = gabineteIdNuevo || citaExistente.gabineteId || undefined;
+    let { resuelto: dentistaResuelto, id: dentistaIdNuevo } = await resolverDentista(clinicaId, interpretacion.dentista, avisos);
+    let { resuelto: gabineteResuelto, id: gabineteIdNuevo } = await resolverGabinete(clinicaId, interpretacion.gabinete, avisos);
+    let dentistaId = dentistaIdNuevo || citaExistente.dentistaId || undefined;
+    let gabineteIdFiltro = gabineteIdNuevo || citaExistente.gabineteId || undefined;
     const fechaNueva = interpretacion.fecha || citaExistente.fecha;
 
     if (!interpretacion.hora) {
@@ -476,6 +494,30 @@ Si mencionan un profesional o doctor concreto, ponlo en "dentista". Si mencionan
     const libres = huecosLibres(fechaNueva, diaSemana, horario, aSlots(citasDelDia), gabineteIds, dentistaId);
     const disponible = libres.includes(interpretacion.hora);
 
+    // Igual que en "agendar": si la cita ya venía sin gabinete/profesional (citas creadas antes
+    // de este arreglo) se asigna uno libre en el hueco nuevo en vez de dejarla invisible en el
+    // planning. Ojo: se mira el valor YA FUSIONADO con el de la cita existente (gabineteIdFiltro/
+    // dentistaId), no gabineteResuelto/dentistaResuelto — esos solo reflejan lo dicho EN ESTA
+    // orden, y no decirlo de nuevo no significa que la cita se quede sin ninguno.
+    if (disponible && (!gabineteIdFiltro || !dentistaId)) {
+      const slotsDelDia = aSlots(citasDelDia);
+      if (!gabineteIdFiltro && todosGabinetes.length) {
+        const libreId = primerLibreEnSlot(interpretacion.hora, slotsDelDia, todosGabinetes.map((g) => g.id), 'gabineteId');
+        const elegido = todosGabinetes.find((g) => g.id === libreId) || todosGabinetes[0];
+        gabineteResuelto = { id: elegido.id, nombre: elegido.nombre };
+        gabineteIdFiltro = elegido.id;
+      }
+      if (!dentistaId) {
+        const dentistasActivos = await prisma.dentista.findMany({ where: { clinicaId, activo: true }, select: { id: true, nombre: true } });
+        if (dentistasActivos.length) {
+          const libreId = primerLibreEnSlot(interpretacion.hora, slotsDelDia, dentistasActivos.map((d) => d.id), 'dentistaId');
+          const elegido = dentistasActivos.find((d) => d.id === libreId) || dentistasActivos[0];
+          dentistaResuelto = { id: elegido.id, nombre: elegido.nombre };
+          dentistaId = elegido.id;
+        }
+      }
+    }
+
     return res.json({
       ...respuestaBase,
       candidatos: candidatosResueltos,
@@ -494,8 +536,8 @@ Si mencionan un profesional o doctor concreto, ponlo en "dentista". Si mencionan
   // accion === 'agendar'
   const candidatos = await resolverPaciente(clinicaId, interpretacion.paciente);
   const avisos: string[] = [];
-  const { resuelto: dentistaResuelto, id: dentistaId } = await resolverDentista(clinicaId, interpretacion.dentista, avisos);
-  const { resuelto: gabineteResuelto, id: gabineteIdFiltro } = await resolverGabinete(clinicaId, interpretacion.gabinete, avisos);
+  let { resuelto: dentistaResuelto, id: dentistaId } = await resolverDentista(clinicaId, interpretacion.dentista, avisos);
+  let { resuelto: gabineteResuelto, id: gabineteIdFiltro } = await resolverGabinete(clinicaId, interpretacion.gabinete, avisos);
 
   const clinica = await prisma.clinica.findUniqueOrThrow({ where: { id: clinicaId } });
   const horario = clinica.horario as HorarioSemana;
@@ -533,6 +575,26 @@ Si mencionan un profesional o doctor concreto, ponlo en "dentista". Si mencionan
   }
 
   const disponible = fechaFinal && horaFinal ? libres.includes(horaFinal) : null;
+
+  // Si no se ha mencionado gabinete/profesional, se asigna uno libre en ese hueco automáticamente
+  // — una cita sin gabinete no aparece en el planning (se organiza por columnas de gabinete), y
+  // una cita sin profesional no tiene sentido en la agenda de una clínica real.
+  if (disponible && fechaFinal && horaFinal) {
+    const slotsDelDia = aSlots(await prisma.cita.findMany({ where: { clinicaId, fecha: fechaFinal, deletedAt: null } }));
+    if (!gabineteResuelto && todosGabinetes.length) {
+      const libreId = primerLibreEnSlot(horaFinal, slotsDelDia, todosGabinetes.map((g) => g.id), 'gabineteId');
+      const elegido = todosGabinetes.find((g) => g.id === libreId) || todosGabinetes[0];
+      gabineteResuelto = { id: elegido.id, nombre: elegido.nombre };
+    }
+    if (!dentistaResuelto) {
+      const dentistasActivos = await prisma.dentista.findMany({ where: { clinicaId, activo: true }, select: { id: true, nombre: true } });
+      if (dentistasActivos.length) {
+        const libreId = primerLibreEnSlot(horaFinal, slotsDelDia, dentistasActivos.map((d) => d.id), 'dentistaId');
+        const elegido = dentistasActivos.find((d) => d.id === libreId) || dentistasActivos[0];
+        dentistaResuelto = { id: elegido.id, nombre: elegido.nombre };
+      }
+    }
+  }
 
   res.json({
     ...respuestaBase,
