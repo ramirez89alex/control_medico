@@ -37,6 +37,7 @@ interface DashboardData {
     citasSemana: number;
     cobradoMes: number;
     pendienteTotal: number;
+    pagadoTotal: number;
     tasaAceptacion: number;
     labEnCurso: number;
     labFueraPlazo: number;
@@ -179,7 +180,36 @@ export function Dashboard() {
             </div>
           </div>
 
-          <div className="grid g2">
+          <div className="grid g3" style={{ marginBottom: 14 }}>
+            <div className="card">
+              <h3>Cobrado vs. pendiente</h3>
+              <hr />
+              {datos.kpis.pagadoTotal + datos.kpis.pendienteTotal <= 0.5 ? (
+                <p className="vacio">Sin presupuestos aceptados todavía.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={240}>
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { nombre: 'Cobrado', valor: datos.kpis.pagadoTotal },
+                        { nombre: 'Pendiente', valor: Math.max(0, datos.kpis.pendienteTotal) },
+                      ]}
+                      dataKey="valor"
+                      nameKey="nombre"
+                      innerRadius={55}
+                      outerRadius={85}
+                      paddingAngle={2}
+                    >
+                      <Cell fill={VERDE} />
+                      <Cell fill={ROJO} />
+                    </Pie>
+                    <Legend wrapperStyle={{ fontSize: 12.5 }} />
+                    <Tooltip content={<TooltipCard formatear={eur} />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+
             <div className="card">
               <h3>Citas de este mes por estado</h3>
               <hr />

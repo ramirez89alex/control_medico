@@ -147,6 +147,7 @@ dashboardRouter.get('/', async (req, res) => {
 
   const labEnCurso = labs.length;
   const labFueraPlazo = labs.filter((l) => l.fechaPrevista < hoy).length;
+  const pagadoTotal = cobrosTodos.reduce((s, c) => s + c.importe, 0);
 
   res.json({
     kpis: {
@@ -156,6 +157,7 @@ dashboardRouter.get('/', async (req, res) => {
       citasSemana,
       cobradoMes,
       pendienteTotal,
+      pagadoTotal,
       tasaAceptacion,
       labEnCurso,
       labFueraPlazo,
