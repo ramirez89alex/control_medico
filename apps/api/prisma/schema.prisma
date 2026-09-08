@@ -289,6 +289,8 @@ model Cita {
   estado     EstadoCita @default(programada)
   confirmada Boolean    @default(false)
   confirmPedida DateTime? @map("confirm_pedida")
+  /// Umbrales de recordatorio ya enviados: subconjunto de "semana" | "3dias" | "1dia" | "1hora".
+  recordatoriosEnviados String[] @default([]) @map("recordatorios_enviados")
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
   deletedAt  DateTime?  @map("deleted_at")

@@ -84,6 +84,38 @@ function gcalURL(c: Cita) {
   );
 }
 
+type TipoRecordatorio = 'semana' | '3dias' | '1dia' | '1hora';
+
+interface RecordatorioPendiente {
+  id: string;
+  fecha: string;
+  hora: string;
+  motivo: string | null;
+  paciente: { nombre: string; apellidos: string; telefono: string | null } | null;
+  dentista: string | null;
+  tipo: TipoRecordatorio;
+}
+
+const ETIQUETA_RECORDATORIO: Record<TipoRecordatorio, string> = {
+  semana: '1 semana antes',
+  '3dias': '3 días antes',
+  '1dia': '1 día antes',
+  '1hora': '1 hora antes',
+};
+
+function fraseRecordatorio(tipo: TipoRecordatorio, fechaHablada: string, hora: string) {
+  switch (tipo) {
+    case 'semana':
+      return `Te recordamos que la semana que viene tienes cita el ${fechaHablada} a las ${hora}.`;
+    case '3dias':
+      return `Te recordamos tu cita en 3 días, el ${fechaHablada} a las ${hora}.`;
+    case '1dia':
+      return `Te recordamos que mañana tienes cita, el ${fechaHablada} a las ${hora}.`;
+    case '1hora':
+      return `Te recordamos que en 1 hora tienes cita hoy a las ${hora}.`;
+  }
+}
+
 export function Agenda() {
   const navigate = useNavigate();
   const [fecha, setFecha] = useState(hoyISO());
@@ -95,6 +127,7 @@ export function Agenda() {
   const [cargando, setCargando] = useState(true);
   const [modalCita, setModalCita] = useState<Cita | 'nueva' | null>(null);
   const [recordatorios, setRecordatorios] = useState<Cita[]>([]);
+  const [avisosPendientes, setAvisosPendientes] = useState<RecordatorioPendiente[]>([]);
   const [labVencido, setLabVencido] = useState(0);
   const [cobradoMes, setCobradoMes] = useState(0);
 
@@ -116,6 +149,10 @@ export function Agenda() {
     setRecordatorios(c.filter((x) => x.estado !== 'hecha' && x.estado !== 'cancelada').sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora)));
   }
 
+  async function cargarAvisosPendientes() {
+    setAvisosPendientes(await api.get<RecordatorioPendiente[]>('/citas/recordatorios-pendientes'));
+  }
+
   useEffect(() => {
     cargar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -126,6 +163,7 @@ export function Agenda() {
     api.get<Dentista[]>('/catalogos/dentistas').then(setDentistas);
     api.get<Gabinete[]>('/catalogos/gabinetes').then(setGabinetes);
     cargarRecordatorios();
+    cargarAvisosPendientes();
 
     api.get<Array<{ estado: string; fechaPrevista: string }>>('/laboratorio').then((trabajos) => {
       const hoy = hoyISO();
@@ -142,6 +180,7 @@ export function Agenda() {
     function alCambiarCitas() {
       cargar();
       cargarRecordatorios();
+      cargarAvisosPendientes();
     }
     window.addEventListener('powerdent:citas-cambiadas', alCambiarCitas);
     return () => window.removeEventListener('powerdent:citas-cambiadas', alCambiarCitas);
@@ -169,6 +208,19 @@ export function Agenda() {
     await api.put(`/citas/${c.id}`, { confirmPedida: new Date().toISOString() });
     cargarRecordatorios();
     if (c.fecha === fecha) cargar();
+  }
+
+  async function enviarRecordatorio(r: RecordatorioPendiente) {
+    if (!r.paciente || !r.paciente.telefono) {
+      window.alert('Este paciente no tiene teléfono guardado.');
+      return;
+    }
+    const d = new Date(`${r.fecha}T00:00:00`);
+    const fechaHablada = d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+    const texto = `Hola ${r.paciente.nombre}, te escribimos de PowerDent.\n\n${fraseRecordatorio(r.tipo, fechaHablada, r.hora)}${r.dentista ? ` Con ${r.dentista}.` : ''}${r.motivo ? `\n${r.motivo}` : ''}\n\n¡Te esperamos!`;
+    window.open(`https://wa.me/${telWA(r.paciente.telefono)}?text=${encodeURIComponent(texto)}`, '_blank');
+    await api.post(`/citas/${r.id}/recordatorio`, { tipo: r.tipo });
+    cargarAvisosPendientes();
   }
 
   async function marcarConfirmada(c: Cita, val: boolean) {
@@ -349,6 +401,43 @@ export function Agenda() {
           </div>
         )}
       </div>
+
+      {avisosPendientes.length > 0 && (
+        <div className="card">
+          <div className="entre">
+            <h3>Recordatorios de cita</h3>
+            <span className="tag warn">{avisosPendientes.length} por enviar</span>
+          </div>
+          <p className="mini">Semana, 3 días, 1 día y 1 hora antes — envía por WhatsApp con un toque.</p>
+          <hr />
+          <table>
+            <tbody>
+              {avisosPendientes.map((r) => (
+                <tr key={r.id}>
+                  <td className="mono" style={{ width: 96 }}>
+                    {new Date(`${r.fecha}T00:00:00`).toLocaleDateString('es-ES')}
+                    <div className="mini">{r.hora}</div>
+                  </td>
+                  <td>
+                    <b>{r.paciente ? `${r.paciente.nombre} ${r.paciente.apellidos}`.trim() : 'Paciente'}</b>
+                    <div className="mini">
+                      {r.motivo || ''} {r.paciente?.telefono ? `· ${r.paciente.telefono}` : '· sin teléfono'}
+                    </div>
+                  </td>
+                  <td style={{ width: 130 }}>
+                    <span className="tag info">{ETIQUETA_RECORDATORIO[r.tipo]}</span>
+                  </td>
+                  <td className="num" style={{ whiteSpace: 'nowrap' }}>
+                    <button className="btn pri sm" onClick={() => enviarRecordatorio(r)}>
+                      Enviar recordatorio
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {recordatorios.length > 0 && (
         <div className="card">
