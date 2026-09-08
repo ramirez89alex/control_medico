@@ -1,4 +1,4 @@
-import { CSSProperties, FormEvent, useEffect, useState } from 'react';
+import { CSSProperties, FormEvent, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { hoyISO, sumarDiasISO } from '@powerdent/shared';
 import { api, ApiError } from '../lib/api';
@@ -16,6 +16,7 @@ interface Dentista {
   id: string;
   nombre: string;
   color: string;
+  gabineteId: string | null;
 }
 
 interface Gabinete {
@@ -433,6 +434,12 @@ function CitaModal({
   onGuardado: () => void;
 }) {
   const [error, setError] = useState<string | null>(null);
+  const dentistaSelectRef = useRef<HTMLSelectElement>(null);
+
+  function alCambiarGabinete(gabineteId: string) {
+    const asignado = dentistas.find((d) => d.gabineteId === gabineteId);
+    if (asignado && dentistaSelectRef.current) dentistaSelectRef.current.value = asignado.id;
+  }
 
   async function guardar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -514,7 +521,7 @@ function CitaModal({
           </div>
           <div className="f">
             <label>Gabinete</label>
-            <select name="gabineteId" defaultValue={cita?.gabinete?.id || ''}>
+            <select name="gabineteId" defaultValue={cita?.gabinete?.id || ''} onChange={(e) => alCambiarGabinete(e.target.value)}>
               <option value="">—</option>
               {gabinetes.map((g) => (
                 <option key={g.id} value={g.id}>
@@ -525,7 +532,7 @@ function CitaModal({
           </div>
           <div className="f">
             <label>Profesional</label>
-            <select name="dentistaId" defaultValue={cita?.dentista?.id || ''}>
+            <select name="dentistaId" defaultValue={cita?.dentista?.id || ''} ref={dentistaSelectRef}>
               <option value="">—</option>
               {dentistas.map((d) => (
                 <option key={d.id} value={d.id}>
