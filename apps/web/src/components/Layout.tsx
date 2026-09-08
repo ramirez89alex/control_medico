@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../lib/auth-context';
+import { AsistenteVoz } from './AsistenteVoz';
 
 const MENU: Array<{ sep: string } | { to: string; label: string }> = [
   { sep: 'Clínica' },
@@ -62,6 +63,7 @@ export function Layout() {
       <main>
         <Outlet />
       </main>
+      <AsistenteVoz />
       <footer id="pie">
         <div className="pizq">
           <span className="pluz on" />
