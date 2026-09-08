@@ -17,7 +17,15 @@ function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
 
-const generarSchema = z.object({ pacienteId: z.string().uuid() });
+const EXPIRA_HORAS_MAX = 240; // 10 días — tope para enlaces incluidos en recordatorios con antelación
+
+const generarSchema = z.object({
+  pacienteId: z.string().uuid(),
+  // Para el enlace que se entrega en mano (Portal, ficha del paciente, asistente de voz) los
+  // 15 minutos de siempre bastan. Los recordatorios de cita se mandan con días de antelación,
+  // así que ahí se pide una validez más larga explícitamente (acotada por EXPIRA_HORAS_MAX).
+  expiraHoras: z.number().positive().max(EXPIRA_HORAS_MAX).optional(),
+});
 
 /**
  * El personal genera un enlace de un solo uso para que el paciente entre a su portal,
@@ -32,19 +40,20 @@ authPacienteRouter.post('/generar', requireAuth, requireRol('admin', 'dentista',
   const paciente = await prisma.paciente.findFirst({ where: { id: parsed.data.pacienteId, clinicaId, deletedAt: null } });
   if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
 
+  const expiraMinutos = parsed.data.expiraHoras ? Math.round(parsed.data.expiraHoras * 60) : EXPIRA_MIN;
   const token = randomBytes(TOKEN_BYTES).toString('base64url');
   await prisma.accesoPaciente.create({
     data: {
       clinicaId,
       pacienteId: paciente.id,
       tokenHash: hashToken(token),
-      expiraEn: new Date(Date.now() + EXPIRA_MIN * 60 * 1000),
+      expiraEn: new Date(Date.now() + expiraMinutos * 60 * 1000),
       creadoPorUsuarioId: usuarioDe(req),
     },
   });
 
   registrarAuditoria({ clinicaId, usuarioId: usuarioDe(req), accion: 'generar_acceso', entidad: 'paciente', entidadId: paciente.id });
-  res.status(201).json({ url: `${env.frontendUrl}/acceso/${token}`, expiraMinutos: EXPIRA_MIN });
+  res.status(201).json({ url: `${env.frontendUrl}/acceso/${token}`, expiraMinutos });
 });
 
 const entrarSchema = z.object({ token: z.string().min(20) });

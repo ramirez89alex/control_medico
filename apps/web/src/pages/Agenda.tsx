@@ -92,6 +92,7 @@ interface RecordatorioPendiente {
   hora: string;
   motivo: string | null;
   paciente: { nombre: string; apellidos: string; telefono: string | null } | null;
+  pacienteId: string | null;
   dentista: string | null;
   tipo: TipoRecordatorio;
 }
@@ -215,10 +216,28 @@ export function Agenda() {
       window.alert('Este paciente no tiene teléfono guardado.');
       return;
     }
+    // Se abre la pestaña ya (dentro del clic, si no el navegador la bloquea al no venir de una
+    // acción directa del usuario) y se rellena en cuanto tengamos el mensaje con el enlace.
+    const ventana = window.open('', '_blank');
+    let enlacePortal = '';
+    if (r.pacienteId) {
+      try {
+        const horasHastaCita = Math.max(1, (new Date(`${r.fecha}T${r.hora}:00`).getTime() - Date.now()) / (1000 * 60 * 60));
+        const acceso = await api.post<{ url: string }>('/auth/paciente/generar', {
+          pacienteId: r.pacienteId,
+          expiraHoras: Math.min(240, Math.ceil(horasHastaCita) + 4),
+        });
+        enlacePortal = acceso.url;
+      } catch {
+        /* si falla la generación del enlace, se manda el recordatorio igualmente sin él */
+      }
+    }
     const d = new Date(`${r.fecha}T00:00:00`);
     const fechaHablada = d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
-    const texto = `Hola ${r.paciente.nombre}, te escribimos de PowerDent.\n\n${fraseRecordatorio(r.tipo, fechaHablada, r.hora)}${r.dentista ? ` Con ${r.dentista}.` : ''}${r.motivo ? `\n${r.motivo}` : ''}\n\n¡Te esperamos!`;
-    window.open(`https://wa.me/${telWA(r.paciente.telefono)}?text=${encodeURIComponent(texto)}`, '_blank');
+    const texto = `Hola ${r.paciente.nombre}, te escribimos de PowerDent.\n\n${fraseRecordatorio(r.tipo, fechaHablada, r.hora)}${r.dentista ? ` Con ${r.dentista}.` : ''}${r.motivo ? `\n${r.motivo}` : ''}${enlacePortal ? `\n\nConsulta los detalles de tu cita en tu portal: ${enlacePortal}` : ''}\n\n¡Te esperamos!`;
+    const urlWA = `https://wa.me/${telWA(r.paciente.telefono)}?text=${encodeURIComponent(texto)}`;
+    if (ventana) ventana.location.href = urlWA;
+    else window.open(urlWA, '_blank');
     await api.post(`/citas/${r.id}/recordatorio`, { tipo: r.tipo });
     cargarAvisosPendientes();
   }

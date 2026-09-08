@@ -110,6 +110,7 @@ citasRouter.get('/recordatorios-pendientes', async (req, res) => {
         hora: c.hora,
         motivo: c.motivo,
         paciente: c.paciente ? { nombre: c.paciente.nombre, apellidos: c.paciente.apellidos, telefono: c.paciente.telefono } : c.nombreLibre ? { nombre: c.nombreLibre, apellidos: '', telefono: null } : null,
+        pacienteId: c.pacienteId,
         dentista: c.dentista?.nombre || null,
         tipo: umbral.tipo,
       };
